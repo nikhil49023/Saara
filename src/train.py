@@ -150,30 +150,7 @@ class SarvamTrainer:
         trainer.model.save_pretrained(self.output_dir / "final_adapter")
         console.print(f"[green]Training complete! Model saved to {self.output_dir}[/green]")
 
-    def _format_prompts(self, example):
-        """Format ShareGPT conversations into text for training."""
-        output_texts = []
-        for conversations in example['conversations']:
-            # Construct prompt: "User: <inp>\nAssistant: <out>" or ChatML
-            # Simple format:
-            text = ""
-            for msg in conversations:
-                role = msg['from']
-                content = msg['value']
-                
-                if role == "human":
-                    text += f"<human>: {content}\n"
-                elif role == "gpt":
-                    text += f"<bot>: {content}\n"
-                elif role == "system":
-                    text += f"<system>: {content}\n"
-            
-            output_texts.append(text + tokenizer.eos_token) 
-            # Note: tokenizer is not available in scope here normally, usually done via partial
-            # But SFTTrainer handles tokenization. We just return string.
-            # Let's fix scope or assume standard text.
-            
-        return output_texts
+
 
     # Better formatting function that handles list of dicts
     # SFTTrainer passes the batch (dict of lists) to this function

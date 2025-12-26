@@ -5,7 +5,7 @@ Handles language detection (via Granite) and translation (via Sarvam).
 
 import logging
 from typing import Optional, Tuple
-import sarvamai
+
 from .ollama_client import OllamaClient
 
 logger = logging.getLogger(__name__)
@@ -26,8 +26,12 @@ class Translator:
         
         if self.enabled and self.api_key:
             try:
+                import sarvamai
                 self.client = sarvamai.SarvamAI(api_subscription_key=self.api_key)
                 logger.info("Sarvam AI client initialized")
+            except ImportError:
+                logger.warning("Sarvam AI package not found. Disabling translation.")
+                self.enabled = False
             except Exception as e:
                 logger.error(f"Failed to initialize Sarvam AI: {e}")
                 self.enabled = False

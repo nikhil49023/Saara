@@ -1,7 +1,7 @@
 # PDF Processing
 pymupdf==1.24.14
 pdfplumber==0.11.4
-docling
+
 
 # LLM Integration
 ollama==0.4.5
