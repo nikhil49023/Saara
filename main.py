@@ -336,33 +336,62 @@ def run_evaluation_wizard(config: dict = None):
         border_style="cyan"
     ))
     
-    # Get base model
-    console.print("\n[bold]Enter the base model used for fine-tuning:[/bold]")
-    base_models = [
-        "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        "google/gemma-2b",
-        "sarvamai/sarvam-1",
-        "meta-llama/Llama-3.2-1B"
-    ]
-    
-    for i, m in enumerate(base_models, 1):
-        console.print(f"  {i}. {m}")
-    console.print(f"  {len(base_models)+1}. Other (custom)")
-    
-    choice = Prompt.ask("Select base model", choices=[str(i) for i in range(1, len(base_models)+2)], default="1")
-    
-    if int(choice) <= len(base_models):
-        base_model = base_models[int(choice)-1]
-    else:
-        base_model = Prompt.ask("Enter HuggingFace model ID")
-    
-    # Get adapter path
-    default_adapter = f"models/{base_model.split('/')[-1]}-finetuned/final_adapter"
-    adapter_path = Prompt.ask("Path to adapter model", default=default_adapter).strip('"\'')
-    
-    if not os.path.exists(adapter_path):
-        console.print(f"[red]Adapter not found: {adapter_path}[/red]")
+    # Scan for fine-tuned models
+    models_dir = Path("models")
+    if not models_dir.exists():
+        console.print("[red]No models directory found. Please train a model first.[/red]")
         return
+    
+    # Find all fine-tuned models
+    finetuned_models = []
+    for model_dir in models_dir.iterdir():
+        if model_dir.is_dir():
+            adapter_path = model_dir / "final_adapter"
+            if adapter_path.exists():
+                # Try to get base model from config
+                adapter_config_path = adapter_path / "adapter_config.json"
+                base_model = None
+                if adapter_config_path.exists():
+                    import json
+                    with open(adapter_config_path, 'r') as f:
+                        adapter_config = json.load(f)
+                        base_model = adapter_config.get("base_model_name_or_path", "")
+                
+                finetuned_models.append({
+                    "name": model_dir.name,
+                    "path": str(adapter_path),
+                    "base_model": base_model or "Unknown"
+                })
+    
+    if not finetuned_models:
+        console.print("[yellow]No fine-tuned models found in models/ directory.[/yellow]")
+        console.print("[dim]Train a model first using option 2.[/dim]")
+        return
+    
+    # Display available models
+    console.print("\n[bold]Available Fine-tuned Models:[/bold]\n")
+    model_table = Table(show_header=True, header_style="bold magenta")
+    model_table.add_column("#", style="cyan", width=4)
+    model_table.add_column("Model Name", style="green")
+    model_table.add_column("Base Model", style="yellow")
+    
+    for i, m in enumerate(finetuned_models, 1):
+        model_table.add_row(str(i), m["name"], m["base_model"])
+    
+    console.print(model_table)
+    console.print()
+    
+    # Select model
+    choice = Prompt.ask("Select model to evaluate", choices=[str(i) for i in range(1, len(finetuned_models)+1)], default="1")
+    selected = finetuned_models[int(choice)-1]
+    
+    base_model = selected["base_model"]
+    adapter_path = selected["path"]
+    
+    if base_model == "Unknown":
+        base_model = Prompt.ask("Enter base model ID", default="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    else:
+        console.print(f"[green]Using base model: {base_model}[/green]")
     
     # Number of test samples
     num_samples = int(Prompt.ask("Number of test samples", default="10"))
@@ -409,33 +438,62 @@ def run_deployment_wizard(config: dict = None):
         border_style="green"
     ))
     
-    # Get base model
-    console.print("\n[bold]Select the base model:[/bold]")
-    base_models = [
-        "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        "google/gemma-2b",
-        "sarvamai/sarvam-1",
-        "meta-llama/Llama-3.2-1B"
-    ]
-    
-    for i, m in enumerate(base_models, 1):
-        console.print(f"  {i}. {m}")
-    console.print(f"  {len(base_models)+1}. Other (custom)")
-    
-    choice = Prompt.ask("Select base model", choices=[str(i) for i in range(1, len(base_models)+2)], default="1")
-    
-    if int(choice) <= len(base_models):
-        base_model = base_models[int(choice)-1]
-    else:
-        base_model = Prompt.ask("Enter HuggingFace model ID")
-    
-    # Get adapter path
-    default_adapter = f"models/{base_model.split('/')[-1]}-finetuned/final_adapter"
-    adapter_path = Prompt.ask("Path to adapter model", default=default_adapter).strip('"\'')
-    
-    if not os.path.exists(adapter_path):
-        console.print(f"[red]Adapter not found: {adapter_path}[/red]")
+    # Scan for fine-tuned models
+    models_dir = Path("models")
+    if not models_dir.exists():
+        console.print("[red]No models directory found. Please train a model first.[/red]")
         return
+    
+    # Find all fine-tuned models (directories with 'final_adapter' subfolder)
+    finetuned_models = []
+    for model_dir in models_dir.iterdir():
+        if model_dir.is_dir():
+            adapter_path = model_dir / "final_adapter"
+            if adapter_path.exists():
+                finetuned_models.append({
+                    "name": model_dir.name,
+                    "path": str(adapter_path),
+                    "dir": str(model_dir)
+                })
+    
+    if not finetuned_models:
+        console.print("[yellow]No fine-tuned models found in models/ directory.[/yellow]")
+        console.print("[dim]Train a model first using option 2.[/dim]")
+        return
+    
+    # Display available models
+    console.print("\n[bold]Available Fine-tuned Models:[/bold]\n")
+    model_table = Table(show_header=True, header_style="bold magenta")
+    model_table.add_column("#", style="cyan", width=4)
+    model_table.add_column("Model Name", style="green")
+    model_table.add_column("Adapter Path", style="dim")
+    
+    for i, m in enumerate(finetuned_models, 1):
+        model_table.add_row(str(i), m["name"], m["path"])
+    
+    console.print(model_table)
+    console.print()
+    
+    # Select model
+    choice = Prompt.ask("Select model to deploy", choices=[str(i) for i in range(1, len(finetuned_models)+1)], default="1")
+    selected = finetuned_models[int(choice)-1]
+    
+    # Infer base model from adapter config
+    adapter_config_path = Path(selected["path"]) / "adapter_config.json"
+    base_model = None
+    
+    if adapter_config_path.exists():
+        import json
+        with open(adapter_config_path, 'r') as f:
+            adapter_config = json.load(f)
+            base_model = adapter_config.get("base_model_name_or_path", "")
+    
+    if not base_model:
+        # Ask user for base model
+        console.print("[yellow]Could not detect base model. Please specify:[/yellow]")
+        base_model = Prompt.ask("Enter base model ID", default="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+    else:
+        console.print(f"[green]Detected base model: {base_model}[/green]")
     
     # Load config
     if not config:
@@ -449,7 +507,7 @@ def run_deployment_wizard(config: dict = None):
     # Run deployment menu
     from src.deployer import ModelDeployer
     deployer = ModelDeployer(config)
-    deployer.deploy_menu(base_model, adapter_path)
+    deployer.deploy_menu(base_model, selected["path"])
 
 
 def main():
