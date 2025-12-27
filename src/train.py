@@ -46,16 +46,27 @@ class LLMTrainer:
             "warmup_steps": 10,                # Quick warmup
         }
 
-    def train(self, data_path: str, resume_from_checkpoint: Optional[str] = None):
+    def train(self, data_path, resume_from_checkpoint: Optional[str] = None):
         """
         Start fine-tuning process.
         
         Args:
-            data_path: Path to the JSONL training data
+            data_path: Path to JSONL file OR list of JSONL files for batch training
             resume_from_checkpoint: Path to a checkpoint to resume from (optional)
         """
         from rich.table import Table
         from rich.panel import Panel
+        from rich.progress import Progress, SpinnerColumn, TextColumn
+        
+        # Handle list of files (batch training)
+        is_batch = isinstance(data_path, list)
+        
+        if is_batch:
+            data_files = data_path
+            display_path = f"{len(data_files)} files (batch mode)"
+        else:
+            data_files = [data_path]
+            display_path = str(data_path)
         
         # Display training configuration in a nice table
         config_table = Table(title="🚀 Fine-tuning Configuration", show_header=True, header_style="bold cyan")
@@ -63,7 +74,7 @@ class LLMTrainer:
         config_table.add_column("Value", style="yellow")
         
         config_table.add_row("Base Model", self.model_id)
-        config_table.add_row("Training Data", str(data_path))
+        config_table.add_row("Training Data", display_path)
         config_table.add_row("Output Directory", str(self.output_dir))
         config_table.add_row("Batch Size", str(self.train_params["per_device_train_batch_size"]))
         config_table.add_row("Learning Rate", str(self.train_params["learning_rate"]))
@@ -75,6 +86,21 @@ class LLMTrainer:
         console.print(config_table)
         console.print()
         
+        # For batch training, we'll train on each file sequentially
+        if is_batch:
+            console.print(f"[bold cyan]📦 Batch Training Mode: {len(data_files)} files[/bold cyan]\n")
+            
+            for i, file_path in enumerate(data_files, 1):
+                console.print(f"\n[bold yellow]━━━ Batch {i}/{len(data_files)}: {Path(file_path).name} ━━━[/bold yellow]")
+                self._train_single_file(file_path, resume_from_checkpoint if i == 1 else None)
+                console.print(f"[green]✓ Completed batch {i}/{len(data_files)}[/green]")
+            
+            console.print(f"\n[bold green]🎉 Batch training complete! Trained on {len(data_files)} files.[/bold green]")
+        else:
+            self._train_single_file(data_files[0], resume_from_checkpoint)
+    
+    def _train_single_file(self, data_path: str, resume_from_checkpoint: Optional[str] = None):
+        """Train on a single file."""
         # 1. Load Dataset
         try:
             dataset = load_dataset("json", data_files=data_path, split="train")
@@ -83,7 +109,7 @@ class LLMTrainer:
             console.print(f"[red]Failed to load dataset: {e}[/red]")
             return
         
-        # 1.5 Data Preparation with Granite 4 (Optional optimization)
+        # 1.5 Data Preparation
         dataset = self._prepare_dataset(dataset)
 
         console.print(f"\n[bold yellow]🔄 Pulling/Loading Model & Tokenizer: {self.model_id}...[/bold yellow]")
