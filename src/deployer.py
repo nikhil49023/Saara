@@ -84,11 +84,13 @@ class ModelDeployer:
             tokenizer = AutoTokenizer.from_pretrained(base_model_id)
             tokenizer.pad_token = tokenizer.eos_token
             
+            # Use 8-bit quantization for lower memory usage
             model = AutoModelForCausalLM.from_pretrained(
                 base_model_id,
                 torch_dtype=torch.float16,
                 device_map="auto",
-                trust_remote_code=True
+                trust_remote_code=True,
+                load_in_8bit=True  # Lower memory usage
             )
             model = PeftModel.from_pretrained(model, adapter_path)
             model.eval()
@@ -116,10 +118,14 @@ class ModelDeployer:
                 response = tokenizer.decode(outputs[0], skip_special_tokens=True)
                 response = response[len(user_input):].strip()
                 
-                console.print(f"[bold green]Assistant:[/bold green] {response}\n")
+                # Escape any brackets that might be in the response
+                response_safe = response.replace("[", "\\[").replace("]", "\\]")
+                console.print(f"[bold green]Assistant:[/bold green] {response_safe}\n")
                 
         except Exception as e:
-            console.print(f"[red]Error: {e}[/red]")
+            # Escape brackets in error message to prevent Rich markup errors
+            error_msg = str(e).replace("[", "\\[").replace("]", "\\]")
+            console.print(f"[red]Error: {error_msg}[/red]")
     
     def export_to_ollama(self, base_model_id: str, adapter_path: str):
         """Export model to GGUF format for use with Ollama."""

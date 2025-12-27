@@ -141,12 +141,13 @@ class ModelEvaluator:
             tokenizer = AutoTokenizer.from_pretrained(base_model_id)
             tokenizer.pad_token = tokenizer.eos_token
             
-            # Load base model
+            # Load base model with 8-bit quantization for lower memory
             model = AutoModelForCausalLM.from_pretrained(
                 base_model_id,
                 torch_dtype=torch.float16,
                 device_map="auto",
-                trust_remote_code=True
+                trust_remote_code=True,
+                load_in_8bit=True  # Lower memory usage
             )
             
             # Load adapter
@@ -157,7 +158,8 @@ class ModelEvaluator:
             return model, tokenizer
             
         except Exception as e:
-            console.print(f"[red]Error loading model: {e}[/red]")
+            error_msg = str(e).replace("[", "\\[").replace("]", "\\]")
+            console.print(f"[red]Error loading model: {error_msg}[/red]")
             return None, None
     
     def _generate_response(self, model, tokenizer, prompt: str, max_length: int = 256) -> str:

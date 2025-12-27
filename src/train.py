@@ -46,27 +46,16 @@ class LLMTrainer:
             "warmup_steps": 10,                # Quick warmup
         }
 
-    def train(self, data_path, resume_from_checkpoint: Optional[str] = None):
+    def train(self, data_path: str, resume_from_checkpoint: Optional[str] = None):
         """
         Start fine-tuning process.
         
         Args:
-            data_path: Path to JSONL file OR list of JSONL files for batch training
+            data_path: Path to the JSONL training data
             resume_from_checkpoint: Path to a checkpoint to resume from (optional)
         """
         from rich.table import Table
         from rich.panel import Panel
-        from rich.progress import Progress, SpinnerColumn, TextColumn
-        
-        # Handle list of files (batch training)
-        is_batch = isinstance(data_path, list)
-        
-        if is_batch:
-            data_files = data_path
-            display_path = f"{len(data_files)} files (batch mode)"
-        else:
-            data_files = [data_path]
-            display_path = str(data_path)
         
         # Display training configuration in a nice table
         config_table = Table(title="🚀 Fine-tuning Configuration", show_header=True, header_style="bold cyan")
@@ -74,7 +63,10 @@ class LLMTrainer:
         config_table.add_column("Value", style="yellow")
         
         config_table.add_row("Base Model", self.model_id)
-        config_table.add_row("Training Data", display_path)
+        if isinstance(data_path, list):
+            config_table.add_row("Training Data", f"{len(data_path)} files (batch mode)")
+        else:
+            config_table.add_row("Training Data", str(data_path))
         config_table.add_row("Output Directory", str(self.output_dir))
         config_table.add_row("Batch Size", str(self.train_params["per_device_train_batch_size"]))
         config_table.add_row("Learning Rate", str(self.train_params["learning_rate"]))
@@ -86,30 +78,40 @@ class LLMTrainer:
         console.print(config_table)
         console.print()
         
-        # For batch training, we'll train on each file sequentially
-        if is_batch:
-            console.print(f"[bold cyan]📦 Batch Training Mode: {len(data_files)} files[/bold cyan]\n")
-            
-            for i, file_path in enumerate(data_files, 1):
-                console.print(f"\n[bold yellow]━━━ Batch {i}/{len(data_files)}: {Path(file_path).name} ━━━[/bold yellow]")
-                self._train_single_file(file_path, resume_from_checkpoint if i == 1 else None)
-                console.print(f"[green]✓ Completed batch {i}/{len(data_files)}[/green]")
-            
-            console.print(f"\n[bold green]🎉 Batch training complete! Trained on {len(data_files)} files.[/bold green]")
-        else:
-            self._train_single_file(data_files[0], resume_from_checkpoint)
-    
-    def _train_single_file(self, data_path: str, resume_from_checkpoint: Optional[str] = None):
-        """Train on a single file."""
-        # 1. Load Dataset
+        # 1. Load Dataset (supports single file or list of files)
         try:
-            dataset = load_dataset("json", data_files=data_path, split="train")
-            console.print(f"[green]✅ Loaded {len(dataset)} training examples[/green]")
+            from datasets import concatenate_datasets
+            
+            if isinstance(data_path, list):
+                # Batch loading - load each file and concatenate
+                console.print(f"[yellow]Loading {len(data_path)} files...[/yellow]")
+                datasets_list = []
+                
+                for i, file_path in enumerate(data_path):
+                    try:
+                        ds = load_dataset("json", data_files=file_path, split="train")
+                        datasets_list.append(ds)
+                        console.print(f"  [dim]+ {Path(file_path).name}: {len(ds)} samples[/dim]")
+                    except Exception as e:
+                        console.print(f"  [red]Skipped {Path(file_path).name}: {e}[/red]")
+                
+                if not datasets_list:
+                    console.print("[red]Failed to load any datasets![/red]")
+                    return
+                
+                # Concatenate all datasets
+                dataset = concatenate_datasets(datasets_list)
+                console.print(f"[green]✅ Loaded {len(dataset)} total training examples from {len(datasets_list)} files[/green]")
+            else:
+                # Single file loading
+                dataset = load_dataset("json", data_files=data_path, split="train")
+                console.print(f"[green]✅ Loaded {len(dataset)} training examples[/green]")
+                
         except Exception as e:
             console.print(f"[red]Failed to load dataset: {e}[/red]")
             return
         
-        # 1.5 Data Preparation
+        # 1.5 Data Preparation (Optional optimization)
         dataset = self._prepare_dataset(dataset)
 
         console.print(f"\n[bold yellow]🔄 Pulling/Loading Model & Tokenizer: {self.model_id}...[/bold yellow]")
@@ -235,11 +237,12 @@ class LLMTrainer:
             conversation_list = example['conversations']
             text = ""
             for msg in conversation_list:
-                role = msg['from']
-                content = msg['value']
-                if role == 'human':
+                role = msg.get('from', msg.get('role', ''))
+                content = msg.get('value', msg.get('content', ''))
+                # Handle both ShareGPT (human/gpt) and standard (user/assistant) formats
+                if role in ['human', 'user']:
                     text += f"User: {content}\n"
-                elif role == 'gpt':
+                elif role in ['gpt', 'assistant']:
                     text += f"Assistant: {content}\n"
                 elif role == 'system':
                     text += f"System: {content}\n"
@@ -271,9 +274,26 @@ class LLMTrainer:
         Prepare and optimize dataset for training.
         Uses Granite 4 via Ollama to validate and fix data issues.
         """
-        console.print("\n[bold yellow]🔧 Preparing Dataset with Granite 4...[/bold yellow]")
+        console.print("\n[bold yellow]🔧 Preparing Dataset...[/bold yellow]")
         
         original_count = len(dataset)
+        
+        # Step 0: Normalize role names (ShareGPT human/gpt -> user/assistant)
+        def normalize_roles(example):
+            if 'conversations' in example:
+                for msg in example['conversations']:
+                    if msg.get('from') == 'human':
+                        msg['from'] = 'user'
+                    elif msg.get('from') == 'gpt':
+                        msg['from'] = 'assistant'
+                    # Also handle 'role' key
+                    if msg.get('role') == 'human':
+                        msg['role'] = 'user'
+                    elif msg.get('role') == 'gpt':
+                        msg['role'] = 'assistant'
+            return example
+        
+        dataset = dataset.map(normalize_roles)
         
         # Step 1: Filter out empty/invalid samples
         def is_valid(example):
