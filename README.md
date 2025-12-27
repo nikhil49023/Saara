@@ -68,19 +68,32 @@ graph LR
 
 ## ⚡ Usage
 
-### 1. Extract & Generate Data
+### 🚀 Interactive Wizard (Recommended)
+The easiest way to use NeuroPipe is via the interactive wizard, which guides you through selecting your data folders, models, and configuration.
+
+```bash
+python main.py
+```
+**Features of the Wizard:**
+- **Dynamic Path Selection**: Choose any input folder for your PDFs and any output folder for datasets.
+- **Model Selector**: Visual comparison of Vision OCR models (Moondream vs Qwen) and Analyzer models (Granite vs Llama).
+- **Format Configuration**: Automatically configures output formats (JSONL, ShareGPT, etc.).
+
+### 🖥️ Command Line (Advanced)
+
+#### 1. Extract & Generate Data
 Process a directory of PDFs. This runs OCR, chunking, and synthetic generation.
 ```bash
-python main.py batch "./input_pdfs" --name ayurveda_v1 --config config.yaml
+python main.py batch "./input_pdfs" --name ayurveda_v1
 ```
 
-### 2. Distill & Clean
+#### 2. Distill & Clean
 Filter the raw output into high-quality training splits (train/val).
 ```bash
 python main.py distill --name ayurveda_v1
 ```
 
-### 3. Train Model
+#### 3. Train Model
 Fine-tune a model (e.g., Sarvam-1) on your processed data.
 ```bash
 python main.py train --data datasets/distilled_train.jsonl

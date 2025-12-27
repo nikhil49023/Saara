@@ -6,7 +6,7 @@ Orchestrates the complete document-to-dataset pipeline.
 import logging
 import yaml
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass
 from datetime import datetime
 from rich.console import Console
@@ -45,14 +45,17 @@ class DataPipeline:
     Uses Sarvam AI for translation of Indian languages.
     """
     
-    def __init__(self, config_path: str = "config.yaml"):
+    def __init__(self, config_source: Union[str, Dict[str, Any]] = "config.yaml"):
         """
         Initialize the pipeline with configuration.
         
         Args:
-            config_path: Path to configuration YAML file
+            config_source: Path to configuration YAML file or configuration dictionary
         """
-        self.config = self._load_config(config_path)
+        if isinstance(config_source, dict):
+            self.config = config_source
+        else:
+            self.config = self._load_config(config_source)
         self._setup_logging()
         
         # Initialize components
