@@ -141,17 +141,34 @@ class OllamaClient:
             # Try to extract JSON from response
             content = response.content.strip()
             
-            # Handle markdown code blocks
-            if content.startswith('```'):
-                lines = content.split('\n')
-                content = '\n'.join(lines[1:-1])
-                
+            # Find the first { or [ and last } or ]
+            start_idx = -1
+            end_idx = -1
+            
+            # Find start
+            for i, char in enumerate(content):
+                if char in ['{', '[']:
+                    start_idx = i
+                    break
+            
+            # Find end
+            for i in range(len(content) - 1, -1, -1):
+                if content[i] in ['}', ']']:
+                    end_idx = i + 1
+                    break
+            
+            if start_idx != -1 and end_idx != -1:
+                content = content[start_idx:end_idx]
+            
             return json.loads(content)
             
         except json.JSONDecodeError as e:
             logger.error(f"Failed to parse JSON: {e}")
             logger.debug(f"Raw response: {response.content}")
-            return {'error': f"JSON parsing failed: {e}", 'raw': response.content}
+            # Instead of returning error dict, return empty result to allow graceful degradation
+            if schema and isinstance(schema, list) or (isinstance(schema, dict) and 'type' in schema and schema['type'] == 'array'):
+                 return []
+            return {}
     
     def stream_generate(self, 
                         prompt: str,
