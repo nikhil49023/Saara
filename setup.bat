@@ -1,6 +1,6 @@
 @echo off
 echo Installing dependencies...
-pip install -r requirements.txt
+pip install -e .
 
 echo.
 echo Pulling required Ollama models...

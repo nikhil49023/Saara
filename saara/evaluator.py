@@ -21,15 +21,67 @@ console = Console()
 logger = logging.getLogger(__name__)
 
 
+class TeacherClient:
+    """
+    Abstraction layer for different teacher models (Ollama, OpenAI, Google, etc.)
+    """
+    def __init__(self, config: Dict[str, Any]):
+        self.provider = config.get("provider", "ollama")
+        self.model_name = config.get("model", "granite4")
+        self.api_key = config.get("api_key")
+        self.base_url = config.get("base_url") 
+        
+    def generate(self, prompt: str) -> str:
+        """Generate response from the configured teacher."""
+        try:
+            if self.provider == "ollama":
+                import ollama
+                response = ollama.generate(model=self.model_name, prompt=prompt)
+                return response['response'].strip()
+                
+            elif self.provider == "openai" or self.provider == "deepseek":
+                from openai import OpenAI
+                client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+                response = client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.choices[0].message.content.strip()
+                
+            elif self.provider == "google":
+                import google.generativeai as genai
+                genai.configure(api_key=self.api_key)
+                model = genai.GenerativeModel(self.model_name)
+                response = model.generate_content(prompt)
+                return response.text.strip()
+                
+            elif self.provider == "huggingface":
+                from huggingface_hub import InferenceClient
+                client = InferenceClient(token=self.api_key)
+                # For open weights, we use text-generation
+                response = client.text_generation(prompt, model=self.model_name, max_new_tokens=512)
+                return response.strip()
+                
+            else:
+                return f"[Error: Unknown provider {self.provider}]"
+                
+        except Exception as e:
+            return f"[Error: {self.provider} generation failed: {e}]"
+
+
 class ModelEvaluator:
     """
-    Evaluates fine-tuned models using Granite 4 as a teacher/judge.
+    Evaluates fine-tuned models using a teacher/judge model.
     Generates improvement data for iterative training.
     """
     
     def __init__(self, config: Dict[str, Any] = None):
         self.config = config or {}
-        self.ollama_model = self.config.get('ollama', {}).get('model', 'granite4')
+        # Default fallback to config-defined ollama if not specified dynamically
+        self.default_teacher_config = {
+            "provider": "ollama",
+            "model": self.config.get('ollama', {}).get('model', 'granite4')
+        }
         self.results_dir = Path("evaluations")
         self.results_dir.mkdir(exist_ok=True)
         
@@ -207,7 +259,7 @@ Respond in this exact JSON format:
 {{"score": <1-10>, "feedback": "<brief explanation>", "improved_response": "<your better answer if score < 7>"}}
 """
             try:
-                result = ollama.generate(model=self.ollama_model, prompt=eval_prompt)
+                result = ollama.generate(model=self.default_teacher_config['model'], prompt=eval_prompt)
                 response_text = result.get('response', '{}')
                 
                 # Try to parse JSON from response
@@ -312,6 +364,107 @@ Respond in this exact JSON format:
             "What is the role of diet in Ayurvedic treatment?",
             "Describe Ayurvedic remedies for common cold.",
         ]
+
+    
+    def run_autonomous_learning(self, base_model_id: str, adapter_path: str, topic: str, 
+                                num_iterations: int = 10, teacher_config: Dict = None):
+        """
+        Run an autonomous learning session where the model 'chats' with a Teacher Model.
+        """
+        teacher_config = teacher_config or self.default_teacher_config
+        teacher_name = f"{teacher_config['provider']}/{teacher_config['model']}"
+        
+        console.print(Panel.fit(
+            f"[bold cyan]🧠 Autonomous Learning Session[/bold cyan]\n\n"
+            f"Topic: {topic}\n"
+            f"Iterations: {num_iterations}\n"
+            f"Teacher: {teacher_name}",
+            title="Self-Improvement Mode",
+            border_style="green"
+        ))
+        
+        # Initialize Teacher
+        teacher = TeacherClient(teacher_config)
+        
+        # Load Student Model
+        console.print("[yellow]Loading Student Model (Fine-tuned)...[/yellow]")
+        model, tokenizer = self._load_finetuned_model(base_model_id, adapter_path)
+        if not model:
+            return
+
+        new_training_data = []
+        
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console
+        ) as progress:
+            task = progress.add_task("Learning...", total=num_iterations)
+            
+            for i in range(num_iterations):
+                # 1. Teacher generates a question
+                progress.update(task, description=f"Generating question {i+1}/{num_iterations}...")
+                teacher_prompt = f"Ask a challenging question about '{topic}' that an expert should know. Output ONLY the question."
+                teacher_q = teacher.generate(teacher_prompt)
+                
+                # Validation
+                if "[Error" in teacher_q:
+                    console.print(f"[red]{teacher_q}[/red]")
+                    break
+                
+                # 2. Student answers
+                progress.update(task, description=f"Student answering Q{i+1}...")
+                student_ans = self._generate_response(model, tokenizer, teacher_q)
+                
+                # 3. Teacher evaluates and provides ideal answer
+                progress.update(task, description=f"Teacher correcting Q{i+1}...")
+                critique_prompt = f"""
+                You are an expert teacher. 
+                Question: {teacher_q}
+                Student Answer: {student_ans}
+                
+                Analyze the student's answer. If it is perfect, output "PERFECT".
+                If it has errors or missing info, provide the IDEAL, CORRECT answer.
+                Output ONLY the ideal answer.
+                """
+                teacher_feedback = teacher.generate(critique_prompt)
+                
+                if "PERFECT" not in teacher_feedback and len(teacher_feedback) > 10 and "[Error" not in teacher_feedback:
+                    # Create training sample from Teacher's correction
+                    new_training_data.append({
+                        "conversations": [
+                            {"from": "user", "value": teacher_q},
+                            {"from": "assistant", "value": teacher_feedback}
+                        ],
+                        "source": "autonomous_learning",
+                        "topic": topic
+                    })
+                    console.print(f"[green]✓ Learned new concept: {teacher_q[:30]}...[/green]")
+                else:
+                    console.print(f"[dim]✓ Student answered correctly: {teacher_q[:30]}...[/dim]")
+                
+                progress.advance(task)
+        
+        # Save learned data
+        if new_training_data:
+            save_path = self.results_dir / f"learned_data_{topic.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.jsonl"
+            with open(save_path, 'w', encoding='utf-8') as f:
+                for item in new_training_data:
+                    f.write(json.dumps(item, ensure_ascii=False) + '\n')
+            
+            console.print(Panel(f"""
+[bold green]Learning Session Complete![/bold green]
+
+[yellow]New Training Samples:[/yellow] {len(new_training_data)}
+[yellow]Saved To:[/yellow] {save_path}
+
+You can now retrain your model with this data to improve its knowledge on '{topic}'.
+""", title="Session Summary", border_style="green"))
+            
+            return str(save_path)
+        else:
+            console.print("[yellow]No new data generated (Student answered everything correctly!).[/yellow]")
+            return None
 
 
 def run_evaluation(base_model: str, adapter_path: str, config: dict = None):

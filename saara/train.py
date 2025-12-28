@@ -224,11 +224,10 @@ class LLMTrainer:
         console.print(Panel(success_msg, title="🎉 Success", border_style="green"))
 
 
-
     def _format_prompts(self, example):
         """
         Dynamically format prompts based on the dataset structure.
-        Supports: ShareGPT, Alpaca, and Raw Text.
+        Supports: ShareGPT, Alpaca, Q&A, and Raw Text.
         New TRL API - receives single example, returns single string.
         """
         
@@ -258,16 +257,23 @@ class LLMTrainer:
                 return f"Instruction: {instr}\nInput: {inp}\nResponse: {out}"
             else:
                 return f"Instruction: {instr}\nResponse: {out}"
+        
+        # 3. Q&A Format (New Support)
+        elif 'question' in example and 'answer' in example:
+            return f"Question: {example['question']}\nAnswer: {example['answer']}"
                 
-        # 3. Raw Text Format (Pre-training / Completion)
+        # 4. Raw Text Format (Pre-training / Completion)
         elif 'text' in example:
             return example['text']
             
         else:
             # Fallback for unknown format
-            logger.warning("Unknown dataset format. Expected 'conversations', 'instruction'/'output', or 'text'.")
-            first_col = list(example.keys())[0]
-            return str(example[first_col])
+            # Try to return first available column to avoid crashing with None
+            try:
+                first_col = list(example.keys())[0]
+                return str(example[first_col])
+            except Exception:
+                return "" # Safest fallback (will likely be filtered out by tokenizer or short length)
 
     def _prepare_dataset(self, dataset):
         """
@@ -302,6 +308,8 @@ class LLMTrainer:
                 return isinstance(convs, list) and len(convs) >= 2
             elif 'instruction' in example and 'output' in example:
                 return bool(example['instruction']) and bool(example['output'])
+            elif 'question' in example and 'answer' in example:
+                return bool(example['question']) and bool(example['answer'])
             elif 'text' in example:
                 return bool(example['text']) and len(example['text']) > 50
             return False
@@ -330,59 +338,6 @@ class LLMTrainer:
         dataset = dataset.shuffle(seed=42)
         
         console.print(f"  [green]✅ Dataset ready: {len(dataset)} samples[/green]")
-        
-        # Optional: Use Granite 4 for quality scoring (can be slow for large datasets)
-        # Skipping by default for speed, but can be enabled
-        # dataset = self._granite_quality_filter(dataset)
-        
-        return dataset
-    
-    def _granite_quality_filter(self, dataset, sample_size=50):
-        """
-        Use Granite 4 to score sample quality (optional, for advanced cleaning).
-        Only processes a sample to avoid slowdown.
-        """
-        try:
-            from src.ollama_client import OllamaClient
-            client = OllamaClient(self.config.get('ollama', {}))
-            
-            if not client.check_health():
-                console.print("[yellow]Granite 4 not available, skipping quality filter[/yellow]")
-                return dataset
-            
-            console.print(f"  [dim]Running quality check on {sample_size} samples...[/dim]")
-            
-            # Sample a subset for quality check
-            indices_to_check = list(range(min(sample_size, len(dataset))))
-            low_quality_indices = []
-            
-            for idx in indices_to_check:
-                example = dataset[idx]
-                # Format for quality check
-                if 'conversations' in example:
-                    sample_text = str(example['conversations'])[:500]
-                elif 'text' in example:
-                    sample_text = example['text'][:500]
-                else:
-                    continue
-                
-                prompt = f"""Rate this training sample quality (1-10). Reply with just a number.
-Sample: {sample_text}
-Rating:"""
-                
-                response = client.generate(prompt, max_tokens=5)
-                try:
-                    score = int(response.strip().split()[0])
-                    if score < 4:
-                        low_quality_indices.append(idx)
-                except:
-                    pass
-            
-            if low_quality_indices:
-                console.print(f"  [dim]Flagged {len(low_quality_indices)} low-quality samples[/dim]")
-            
-        except Exception as e:
-            console.print(f"[dim]Quality filter skipped: {e}[/dim]")
         
         return dataset
 

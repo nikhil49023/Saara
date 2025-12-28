@@ -42,7 +42,7 @@ class DataPipeline:
     """
     Main pipeline for converting documents to training datasets.
     Uses Granite 4.0 via Ollama for intelligent labeling.
-    Uses Sarvam AI for translation of Indian languages.
+    Uses Saara AI for translation of Indian languages.
     """
     
     def __init__(self, config_source: Union[str, Dict[str, Any]] = "config.yaml"):

@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Any
 import logging
 import re
-from src.qwen_ocr import QwenVisionOCR
-from src.moondream_ocr import MoondreamOCR
+from .qwen_ocr import QwenVisionOCR
+from .moondream_ocr import MoondreamOCR
 
 logger = logging.getLogger(__name__)
 
