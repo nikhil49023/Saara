@@ -16,6 +16,7 @@ class TrainConfig:
 
     model_id: str = "sarvamai/sarvam-1"
     output_dir: str = "./models"
+    num_train_epochs: int = 3
     num_epochs: int = 3
     learning_rate: float = 2e-4
     per_device_train_batch_size: int = 1
@@ -23,6 +24,14 @@ class TrainConfig:
     max_seq_length: int = 2048
     resume_from_checkpoint: Optional[str] = None
     teacher_config: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self) -> None:
+        """Keep epoch aliases in sync for backward compatibility."""
+        default_epochs = 3
+        if self.num_train_epochs != default_epochs and self.num_epochs == default_epochs:
+            self.num_epochs = self.num_train_epochs
+        elif self.num_epochs != default_epochs and self.num_train_epochs == default_epochs:
+            self.num_train_epochs = self.num_epochs
 
     @classmethod
     def from_dict(cls, config: Dict[str, Any]) -> "TrainConfig":

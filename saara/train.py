@@ -194,16 +194,14 @@ class LLMTrainer:
         dataset = self._prepare_dataset(dataset)
         
         # Save prepared dataset to output folder
-        logger.info(f"
-==== 💾 Saving prepared dataset to {self.dataset_output_dir}... ====")
+        logger.info(f"\n==== 💾 Saving prepared dataset to {self.dataset_output_dir}... ====")
         try:
             dataset.save_to_disk(str(self.dataset_output_dir))
             logger.info(f"SUCCESS: Dataset saved successfully")
         except Exception as e:
             logger.warning(f"Could not save dataset copy: {e}")
 
-        logger.info(f"
-==== 🔄 Pulling/Loading Model & Tokenizer: {self.model_id}... ====")
+        logger.info(f"\n==== 🔄 Pulling/Loading Model & Tokenizer: {self.model_id}... ====")
 
         # 2. Load Tokenizer
         try:
@@ -303,24 +301,22 @@ class LLMTrainer:
         
         # 8. Save
         adapter_path = self.model_output_dir / "final_adapter"
-        logger.info(f"
-==== 💾 Saving adapter model... ====")
+        logger.info("\n==== 💾 Saving adapter model... ====")
         trainer.model.save_pretrained(adapter_path)
         
         # Display success summary
-        success_msg = f"""
-[bold green]✅ Training Complete![/bold green]
-
-[yellow]Adapter Model Saved To:[/yellow]
-  {adapter_path}
-
-[yellow]To use this model:[/yellow]
-  from peft import PeftModel
-  model = PeftModel.from_pretrained(base_model, "{adapter_path}")
-"""
-logger.info("="*70)
-logger.info("Process complete")
-logger.info("="*70)
+        success_msg = (
+            "[bold green]✅ Training Complete![/bold green]\n\n"
+            "[yellow]Adapter Model Saved To:[/yellow]\n"
+            f"  {adapter_path}\n\n"
+            "[yellow]To use this model:[/yellow]\n"
+            "  from peft import PeftModel\n"
+            f"  model = PeftModel.from_pretrained(base_model, \"{adapter_path}\")"
+        )
+        logger.info("=" * 70)
+        logger.info("Process complete")
+        logger.info("=" * 70)
+        logger.info(success_msg)
 
 
     def _format_prompts(self, example):
@@ -379,8 +375,7 @@ logger.info("="*70)
         Prepare and optimize dataset for training.
         Uses Granite 4 via Ollama to validate and fix data issues.
         """
-        logger.info(f"
-==== 🔧 Preparing Dataset... ====")
+        logger.info("\n==== 🔧 Preparing Dataset... ====")
         
         original_count = len(dataset)
         
@@ -597,16 +592,15 @@ Topics for {domain}:"""
         """
         import json
         
-        logger.info("="*70)
-logger.info("Autonomous Fine-tuning Data Generation")
-logger.info("="*70)
+        logger.info("=" * 70)
+        logger.info("Autonomous Fine-tuning Data Generation")
+        logger.info("=" * 70)
         
         if not self.teacher:
             self._init_teacher()
         
         # Step 1: Generate curriculum
-        logger.info(f"
-==== Step 1: Generating Curriculum ====")
+        logger.info("\n==== Step 1: Generating Curriculum ====")
         topics = self.generate_curriculum(domain, num_topics=25)
         logger.info(f"[green]✓ Generated {len(topics)} topics[/green]")
         
@@ -616,8 +610,7 @@ logger.info("="*70)
             logger.info(f"  [dim]... and {len(topics) - 5} more[/dim]")
         
         # Step 2: Generate Q&A pairs
-        logger.info(f"
-==== Step 2: Generating Q&A Pairs ====")
+        logger.info("\n==== Step 2: Generating Q&A Pairs ====")
         
         all_pairs = []
         pairs_per_topic = max(5, target_pairs // len(topics))
@@ -641,8 +634,7 @@ logger.info("="*70)
         logger.info(f"[green]✓ Generated {len(all_pairs)} total Q&A pairs[/green]")
         
         # Step 3: Convert to ShareGPT format
-        logger.info(f"
-==== Step 3: Formatting for Fine-tuning ====")
+        logger.info("\n==== Step 3: Formatting for Fine-tuning ====")
         
         formatted_data = []
         for pair in all_pairs:
@@ -661,19 +653,15 @@ logger.info("="*70)
             for item in formatted_data:
                 f.write(json.dumps(item, ensure_ascii=False) + '\n')
         
-logger.info("="*70)
-logger.info("Process complete")
-logger.info("="*70)
-[bold green]✅ Fine-tuning Dataset Ready![/bold green]
-
-[yellow]Q&A Pairs:[/yellow] {len(formatted_data)}
-[yellow]Output File:[/yellow] {output_file}
-[yellow]Format:[/yellow] ShareGPT (conversations)
-
-[bold]Next Step - Fine-tune your model:[/bold]
-  saara run → Model Training → Select base model
-  → Use dataset: {output_file}
-""", title="Generation Complete", border_style="green"))
+                logger.info("=" * 70)
+                logger.info("Process complete")
+                logger.info("=" * 70)
+                logger.info(
+                        "✅ Fine-tuning dataset ready | "
+                        f"Q&A Pairs: {len(formatted_data)} | "
+                        f"Output File: {output_file} | "
+                        "Format: ShareGPT"
+                )
         
         return str(output_file)
     
@@ -690,8 +678,7 @@ logger.info("="*70)
             return dataset_path
         
         # Fine-tune model
-        logger.info(f"
-==== Step 4: Fine-tuning Model ====")
+        logger.info("\n==== Step 4: Fine-tuning Model ====")
         
         trainer = LLMTrainer(model_id=self.base_model)
         trainer.train(dataset_path)

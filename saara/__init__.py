@@ -180,6 +180,107 @@ def __getattr__(name):
         from .rag_engine import quick_rag
         return quick_rag
 
+    # LLM Providers (unified API)
+    if name == "UnifiedLLM":
+        from .llm_providers import UnifiedLLM
+        return UnifiedLLM
+
+    if name == "create_llm":
+        from .llm_providers import create_llm
+        return create_llm
+
+    if name == "quick_generate":
+        from .llm_providers import quick_generate
+        return quick_generate
+
+    # Tokenizers (flexible, built-in BPE/WordPiece)
+    if name == "create_tokenizer":
+        from .tokenizers import create_tokenizer
+        return create_tokenizer
+
+    if name == "TokenizerRegistry":
+        from .tokenizers import TokenizerRegistry
+        return TokenizerRegistry
+
+    if name == "BPETokenizer":
+        from .tokenizers import BPETokenizer
+        return BPETokenizer
+
+    if name == "WordPieceTokenizer":
+        from .tokenizers import WordPieceTokenizer
+        return WordPieceTokenizer
+
+    if name == "ByteTokenizer":
+        from .tokenizers import ByteTokenizer
+        return ByteTokenizer
+
+    # File utilities (manual file handling)
+    if name == "load_from_file":
+        from .file_utils import load_from_file
+        return load_from_file
+
+    if name == "save_to_file":
+        from .file_utils import save_to_file
+        return save_to_file
+
+    if name == "load_jsonl":
+        from .file_utils import load_jsonl
+        return load_jsonl
+
+    if name == "save_jsonl":
+        from .file_utils import save_jsonl
+        return save_jsonl
+
+    if name == "extract_texts":
+        from .file_utils import extract_texts
+        return extract_texts
+
+    if name == "split_dataset":
+        from .file_utils import split_dataset
+        return split_dataset
+
+    # Quickstart (simple common patterns)
+    if name == "QuickLLM":
+        from .quickstart import QuickLLM
+        return QuickLLM
+
+    if name == "QuickTokenizer":
+        from .quickstart import QuickTokenizer
+        return QuickTokenizer
+
+    if name == "QuickDataset":
+        from .quickstart import QuickDataset
+        return QuickDataset
+
+    if name == "QuickFineTune":
+        from .quickstart import QuickFineTune
+        return QuickFineTune
+
+    if name == "ollama_local":
+        from .quickstart import ollama_local
+        return ollama_local
+
+    if name == "gemini_api":
+        from .quickstart import gemini_api
+        return gemini_api
+
+    if name == "openai_api":
+        from .quickstart import openai_api
+        return openai_api
+
+    if name == "claude_api":
+        from .quickstart import claude_api
+        return claude_api
+
+    if name == "nemotron_api":
+        from .quickstart import nemotron_api
+        return nemotron_api
+
+    # QuickAPI (dead-simple end-to-end pipeline)
+    if name == "quickapi":
+        from . import quickapi as _quickapi
+        return _quickapi
+
     raise AttributeError(f"module 'saara' has no attribute '{name}'")
 
 
@@ -243,4 +344,31 @@ __all__ = [
     "RAGManager",
     "create_rag_engine",
     "quick_rag",
+    # LLM Providers (unified API)
+    "UnifiedLLM",
+    "create_llm",
+    "quick_generate",
+    # Tokenizers (flexible)
+    "create_tokenizer",
+    "TokenizerRegistry",
+    "BPETokenizer",
+    "WordPieceTokenizer",
+    "ByteTokenizer",
+    # File utilities
+    "load_from_file",
+    "save_to_file",
+    "load_jsonl",
+    "save_jsonl",
+    "extract_texts",
+    "split_dataset",
+    # Quickstart
+    "QuickLLM",
+    "QuickTokenizer",
+    "QuickDataset",
+    "QuickFineTune",
+    "ollama_local",
+    "gemini_api",
+    "openai_api",
+    "claude_api",
+    "nemotron_api",
 ]
