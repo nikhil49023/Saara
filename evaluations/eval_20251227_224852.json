@@ -1,0 +1,16 @@
+{
+  "timestamp": "2025-12-27T22:48:52.300262",
+  "base_model": "sarvamai/sarvam-1",
+  "adapter_path": "models\\sarvam-1-finetuned\\final_adapter",
+  "average_score": 5.0,
+  "evaluations": [
+    {
+      "prompt": "What is Ayurveda and its main principles?",
+      "response": "**\n\nAyurveda is an ancient Indian medical system that has been around for thousands of years. It focuses on promoting health, preventing disease, and treating illnesses using natural methods. This holistic approach considers the body, mind, and spirit as interconnected parts of a whole. Let's explore some key concepts of Ayurveda!\n\n* **Doshas:** Dosha refers to three energies called Vata, Pitta, and Kapha, which govern different aspects of our physical and mental wellbeing. These doshas are unique within each person, influencing how we respond to various situations. Understanding your dominant dosha(s) helps create personalized self-care strategies.\n* **Prakriti (Body Type):** Your prakriti represents your original constitution at birth based on your dosha ratios. Knowing your prakriti allows you to understand potential strengths and weaknesses in terms of diet, exercise, lifestyle choices, and emotional responses.\n* **Dhatu (Tissue Level):** Dhatus represent seven layers of tissue throughout the human body. Balancing these tissues contributes to overall health. Common",
+      "score": 5,
+      "feedback": "Evaluation error: llama runner process has terminated: CUDA error",
+      "improved_response": ""
+    }
+  ],
+  "improvement_data": []
+}
