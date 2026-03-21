@@ -20,6 +20,15 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+PKG-INFO
+setup.cfg
+
+# Backups and temporary files
+*.backup
+*.bak
+*.orig
+*~
+*.tmp
 
 # Virtual Environment
 venv/
