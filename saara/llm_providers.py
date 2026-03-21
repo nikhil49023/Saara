@@ -4,7 +4,7 @@ Supports Ollama, Gemini, OpenAI, Nemotron, Claude, and custom providers.
 
 Simple API - user provides API key, we handle the rest.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging

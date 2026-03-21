@@ -9,7 +9,7 @@ Features:
 - Smart handling of technical terms, formulas, code
 - Vocabulary optimization based on semantic importance
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

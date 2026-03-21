@@ -10,7 +10,7 @@ The new SAARA is designed to be:
 
 No automatic caching, no magic, no bloat. Pure Python.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 # =============================================================================

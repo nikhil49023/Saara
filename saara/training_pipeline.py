@@ -11,7 +11,7 @@ Architecture:
     Stage 3: Token Storage   → Pre-tokenize & save as .arrow (memory-mapped)
     Stage 4: Training        → Train directly from pre-tokenized data
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging

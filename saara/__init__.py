@@ -5,13 +5,13 @@ Saara: Autonomous Document-to-LLM Data Factory SDK.
 
 Powered by Google Gemini 2.0 Flash & Gemma 2 Models
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 __version__ = "1.6.5"
 __author__ = "Kilani Sai Nikhil"
-__copyright__ = "© 2025-2026 Kilani Sai Nikhil. All Rights Reserved."
-__license__ = "Proprietary"
+__copyright__ = "Copyright (c) 2025-2026 Kilani Sai Nikhil"
+__license__ = "MIT"
 
 # Core imports (always available)
 from .cleaner import TextCleaner, SemanticChunker

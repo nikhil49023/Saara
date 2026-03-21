@@ -10,7 +10,7 @@ Supports multiple tokenizer types:
 
 Simple API: users can pick a tokenizer or bring their own.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import json

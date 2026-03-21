@@ -2,7 +2,7 @@
 Neural Network Visualizer Module
 Interactive visualization for neural network architectures, training metrics, and processes.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

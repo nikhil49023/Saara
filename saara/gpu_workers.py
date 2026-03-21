@@ -2,7 +2,7 @@
 GPU Workers Module
 Enables connecting cloud GPU workers (Kaggle, Colab, etc.) to SAARA CLI for remote training.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

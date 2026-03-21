@@ -3,7 +3,7 @@ Cloud Runtime Module
 Enables running SAARA CLI on cloud platforms (Google Colab, Kaggle, etc.)
 Uses API-based models instead of Ollama for cloud compatibility.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

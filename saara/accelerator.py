@@ -2,7 +2,7 @@
 Neural Network Accelerator Module
 Provides GPU optimization, mixed precision training, and performance acceleration.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

@@ -5,7 +5,7 @@ Handles pre-tokenization and memory-mapped binary storage for efficient training
 Eliminates CPU bottlenecks by pre-tokenizing datasets and storing as .arrow files
 that can be memory-mapped directly into GPU memory during training.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging

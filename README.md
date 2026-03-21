@@ -3,9 +3,9 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![Gemini Powered](https://img.shields.io/badge/Gemini_2.0-Powered-4285F4.svg)](https://ai.google.dev/)
 [![Gemma Models](https://img.shields.io/badge/Gemma_2-Optimized-34A853.svg)](https://ai.google.dev/gemma)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> **🏆 Built for Google Gemini Hackathon** - Showcasing the power of Gemini 2.0 Flash and Gemma 2 models in autonomous AI training pipelines.
+> Open-source framework for autonomous document-to-LLM data pipelines.
 
 **SAARA** is an end-to-end autonomous data pipeline designed to transform raw, unstructured documents (PDFs, research papers) into high-quality, instruction-tuned datasets for fine-tuning Large Language Models (LLMs).
 
@@ -489,19 +489,7 @@ Data-engine/
 
 ## 📄 License
 
-**Proprietary License** - Copyright © 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
-
-This software is provided under a proprietary license with the following terms:
-
-✅ **Permitted:**
-- Use the software for personal, educational, or commercial purposes
-- Reference in academic/educational contexts with attribution
-
-❌ **Not Permitted:**
-- Modify, alter, or create derivative works
-- Reproduce, copy, or duplicate the software
-- Distribute, sublicense, or sell the software
-- Reverse engineer or decompile the software
+This project is licensed under the MIT License.
 
 See the [LICENSE](LICENSE) file for full details.
 

@@ -8,7 +8,7 @@ Unlike fine-tuning datasets (Q&A, instruction pairs), pre-training needs:
 - Quality filtering for coherence
 - Deduplication
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging

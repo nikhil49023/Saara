@@ -7,7 +7,7 @@ Simple utilities for manual file operations:
 - Dataset preparation
 - No automatic caching or saving - user has full control
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import json

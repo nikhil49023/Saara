@@ -8,7 +8,7 @@ Quick & efficient patterns for:
 - Building datasets
 - Everything manual, nothing automatic
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging

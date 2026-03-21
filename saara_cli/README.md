@@ -56,4 +56,4 @@ result = pipeline.process_file("document.pdf", "dataset_name")
 
 ## License
 
-Proprietary (© 2025-2026 Kilani Sai Nikhil)
+MIT

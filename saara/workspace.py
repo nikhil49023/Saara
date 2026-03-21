@@ -2,7 +2,7 @@
 Workspace Configuration Module
 Manages workspace folder for storing models, datasets, and outputs.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import os

@@ -1,48 +1,5 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-setup(
-    name="saara-ai",
-    version="1.6.5",
-    description="SAARA: Autonomous Document-to-LLM Data Engine with Pre-training, Cloud Runtime & AI Tokenizer",
-    author="Kilani Sai Nikhil",
-    packages=find_packages(),
-    install_requires=[
-        "torch>=2.0.0",
-        "transformers>=4.30.0",
-        "peft>=0.4.0",
-        "datasets>=2.10.0",
-        "bitsandbytes>=0.40.0",
-        "accelerate>=0.20.0",
-        "ollama",
-        "fastapi",
-        "pydantic",
-        "google-generativeai",
-        "sentencepiece",
-        "requests",
-        "datasketch>=1.5.0",
-        "sympy>=1.12",
-        "scipy>=1.10.0",
-        "networkx>=3.0",
-    ],
-    extras_require={
-        "dev": ["pytest", "black", "isort", "twine"],
-        "cli": ["typer[all]", "rich>=10.0.0", "uvicorn", "python-multipart"],
-    },
-    python_requires=">=3.8",
-    long_description=open("README.md", encoding="utf-8").read(),
-    long_description_content_type="text/markdown",
-    url="https://github.com/nikhil49023/Data-engine",
-    keywords=["llm", "ai", "pdf", "ocr", "fine-tuning", "rag", "dataset", "autonomous"],
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-    ],
-)
+
+# Keep setup.py as a thin shim and source package metadata from pyproject.toml.
+setup()

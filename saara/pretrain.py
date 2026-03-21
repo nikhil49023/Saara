@@ -2,7 +2,7 @@
 Pre-training Module for SAARA
 Build and train language models from scratch.
 
-© 2025-2026 Kilani Sai Nikhil. All Rights Reserved.
+Released under the MIT License.
 """
 
 import logging
