@@ -1,6 +1,6 @@
 [project]
 name = "saara-ai"
-version = "1.6.5"
+version = "1.6.6"
 description = "🧠 SAARA - Autonomous Document-to-LLM Data Engine with Pre-training, Cloud Runtime & AI Tokenizer"
 authors = [{name = "Kilani Sai Nikhil", email = "nikhil49023@gmail.com"}]
 maintainers = [{name = "Kilani Sai Nikhil", email = "nikhil49023@gmail.com"}]

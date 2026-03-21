@@ -8,7 +8,7 @@ Powered by Google Gemini 2.0 Flash & Gemma 2 Models
 Released under the MIT License.
 """
 
-__version__ = "1.6.5"
+__version__ = "1.6.6"
 __author__ = "Kilani Sai Nikhil"
 __copyright__ = "Copyright (c) 2025-2026 Kilani Sai Nikhil"
 __license__ = "MIT"
