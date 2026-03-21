@@ -13,13 +13,9 @@ setup(
         "datasets>=2.10.0",
         "bitsandbytes>=0.40.0",
         "accelerate>=0.20.0",
-        "rich>=10.0.0",
         "ollama",
         "fastapi",
-        "uvicorn",
         "pydantic",
-        "python-multipart",
-        "typer[all]",
         "google-generativeai",
         "sentencepiece",
         "requests",
@@ -27,15 +23,10 @@ setup(
         "sympy>=1.12",
         "scipy>=1.10.0",
         "networkx>=3.0",
-
     ],
     extras_require={
         "dev": ["pytest", "black", "isort", "twine"],
-    },
-    entry_points={
-        "console_scripts": [
-            "saara=saara.cli:main",
-        ],
+        "cli": ["typer[all]", "rich>=10.0.0", "uvicorn", "python-multipart"],
     },
     python_requires=">=3.8",
     long_description=open("README.md", encoding="utf-8").read(),

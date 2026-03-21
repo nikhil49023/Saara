@@ -6,7 +6,7 @@ Trains the Sarvam-1 model on the distilled dataset using LoRA.
 import sys
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 import torch
 from datasets import load_dataset
@@ -18,21 +18,45 @@ from transformers import (
     BitsAndBytesConfig
 )
 from trl import SFTTrainer
-from rich.console import Console
 
-console = Console()
 logger = logging.getLogger(__name__)
 
 class LLMTrainer:
     """
     Fine-tunes a base model using QLoRA.
     """
-    
-    def __init__(self, model_id: str = "sarvamai/sarvam-1", adapter_path: Optional[str] = None, config: Dict[str, Any] = None):
-        self.config = config or {}
+
+    def __init__(
+        self,
+        model_id: str = "sarvamai/sarvam-1",
+        adapter_path: Optional[str] = None,
+        config: Dict[str, Any] = None,
+        on_progress: Optional[Callable[[str], None]] = None
+    ):
+        """
+        Initialize LLMTrainer.
+
+        Args:
+            model_id: Base model ID (default: sarvamai/sarvam-1)
+            adapter_path: Path to existing adapter for continuation training
+            config: Configuration dictionary or TrainConfig dataclass
+            on_progress: Optional callback for progress updates
+        """
+        from saara.config import convert_config, TrainConfig
+
+        # Convert config if needed
+        if config is not None and isinstance(config, dict):
+            self.config = convert_config(config, TrainConfig).to_dict()
+        else:
+            self.config = config or {}
+
         self.model_id = model_id
         self.adapter_path = adapter_path
-        
+        self.on_progress = on_progress
+
+        # Setup logging callback
+        self._progress = self._make_progress_fn()
+
         # Use provided output directory or default
         if self.config.get("output_dir"):
             self.output_dir = Path(self.config["output_dir"])
@@ -43,10 +67,10 @@ class LLMTrainer:
              self.output_dir = Path(f"models/{parent_name}-refined")
         else:
              self.output_dir = Path(f"models/{model_id.split('/')[-1]}-finetuned")
-        
+
         # Ensure output directory exists
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Create subdirectories for separation
         self.model_output_dir = self.output_dir / "model"
         self.dataset_output_dir = self.output_dir / "dataset"
@@ -62,53 +86,55 @@ class LLMTrainer:
             "max_seq_length": 512,             # Reduced for memory safety
             "logging_steps": 5,                # More frequent logging
             "save_steps": 100,                 # Less frequent saves
-            "optim": "adamw_torch",            # Standard optimizer 
+            "optim": "adamw_torch",            # Standard optimizer
             "warmup_steps": 10,                # Quick warmup
             "dataloader_pin_memory": False,    # Disable for CPU
             "fp16": False,                     # Default false, enabled if GPU available
-            "bf16": False,                     
+            "bf16": False,
         }
+
+    def _make_progress_fn(self) -> Callable[[str], None]:
+        """Create a progress function that logs and calls callback."""
+        def progress(msg: str) -> None:
+            logger.info(msg)
+            if self.on_progress:
+                self.on_progress(msg)
+        return progress
 
     def train(self, data_path: str, resume_from_checkpoint: Optional[str] = None, dataset_config_name: Optional[str] = None):
         """
         Start fine-tuning process.
-        
+
         Args:
             data_path: Path to the JSONL training data OR Hugging Face dataset ID
             resume_from_checkpoint: Path to a checkpoint to resume from (optional)
             dataset_config_name: Optional configuration name for Hugging Face datasets (e.g., 'english', 'v1.0')
         """
-        from rich.table import Table
-        from rich.panel import Panel
         from peft import PeftModel
-        
-        # Display training configuration in a nice table
-        config_table = Table(title="🚀 Fine-tuning Configuration", show_header=True, header_style="bold cyan")
-        config_table.add_column("Parameter", style="green")
-        config_table.add_column("Value", style="yellow")
-        
-        config_table.add_row("Base Model", self.model_id)
+
+        # Log training configuration
+        logger.debug("=" * 60)
+        logger.debug("Fine-tuning Configuration")
+        logger.debug("=" * 60)
+        logger.debug(f"Base Model: {self.model_id}")
         if self.adapter_path:
-            config_table.add_row("Starting Adapter", self.adapter_path)
-            
+            logger.debug(f"Starting Adapter: {self.adapter_path}")
+
         if isinstance(data_path, list):
-            config_table.add_row("Training Data", f"{len(data_path)} files (batch mode)")
+            logger.debug(f"Training Data: {len(data_path)} files (batch mode)")
         else:
-            config_table.add_row("Training Data", str(data_path))
+            logger.debug(f"Training Data: {data_path}")
             if dataset_config_name:
-                config_table.add_row("Dataset Config", dataset_config_name)
-                
-        config_table.add_row("Output Directory", str(self.output_dir))
-        config_table.add_row("  Lines", "Model -> ./model, Dataset -> ./dataset")
-        config_table.add_row("Batch Size", str(self.train_params["per_device_train_batch_size"]))
-        config_table.add_row("Learning Rate", str(self.train_params["learning_rate"]))
-        config_table.add_row("Epochs", str(self.train_params["num_train_epochs"]))
-        config_table.add_row("Max Seq Length", str(self.train_params["max_seq_length"]))
+                logger.debug(f"Dataset Config: {dataset_config_name}")
+
+        logger.debug(f"Output Directory: {self.output_dir}")
+        logger.debug(f"Batch Size: {self.train_params['per_device_train_batch_size']}")
+        logger.debug(f"Learning Rate: {self.train_params['learning_rate']}")
+        logger.debug(f"Epochs: {self.train_params['num_train_epochs']}")
+        logger.debug(f"Max Seq Length: {self.train_params['max_seq_length']}")
         if resume_from_checkpoint:
-            config_table.add_row("Resume From", resume_from_checkpoint)
-        
-        console.print(config_table)
-        console.print()
+            logger.debug(f"Resume From: {resume_from_checkpoint}")
+        logger.debug("=" * 60)
         
         # 1. Load Dataset (supports single file, list of files, or Hub ID)
         try:
@@ -116,75 +142,76 @@ class LLMTrainer:
             
             if isinstance(data_path, list):
                 # Batch loading - load each file and concatenate
-                console.print(f"[yellow]Loading {len(data_path)} files...[/yellow]")
+                logger.info(f"Loading {len(data_path)} files...")
                 datasets_list = []
                 
                 for i, file_path in enumerate(data_path):
                     try:
                         ds = load_dataset("json", data_files=file_path, split="train")
                         datasets_list.append(ds)
-                        console.print(f"  [dim]+ {Path(file_path).name}: {len(ds)} samples[/dim]")
+                        logger.info(f"  [dim]+ {Path(file_path).name}: {len(ds)} samples[/dim]")
                     except Exception as e:
-                        console.print(f"  [red]Skipped {Path(file_path).name}: {e}[/red]")
+                        logger.info(f"  [red]Skipped {Path(file_path).name}: {e}[/red]")
                 
                 if not datasets_list:
-                    console.print("[red]Failed to load any datasets![/red]")
+                    logger.error(f"Failed to load any datasets!")
                     return
                 
                 # Concatenate all datasets
                 dataset = concatenate_datasets(datasets_list)
-                console.print(f"[green]✅ Loaded {len(dataset)} total training examples from {len(datasets_list)} files[/green]")
+                logger.info(f"SUCCESS: Loaded {len(dataset)} total training examples from {len(datasets_list)} files")
             else:
                 # Single file or Hub loading
                 if str(data_path).endswith('.json') or str(data_path).endswith('.jsonl'):
                     dataset = load_dataset("json", data_files=data_path, split="train")
-                    console.print(f"[green]✅ Loaded {len(dataset)} training examples from file[/green]")
+                    logger.info(f"SUCCESS: Loaded {len(dataset)} training examples from file")
                 else:
                     # Assume Hugging Face Hub ID
                     try:
-                        console.print(f"[yellow]⏳ Downloading dataset from Hub: {data_path} ({dataset_config_name or 'default'})...[/yellow]")
+                        logger.info(f"⏳ Downloading dataset from Hub: {data_path} ({dataset_config_name or 'default'})...")
                         dataset = load_dataset(data_path, dataset_config_name, split="train")
-                        console.print(f"[green]✅ Loaded {len(dataset)} training examples from Hub[/green]")
+                        logger.info(f"SUCCESS: Loaded {len(dataset)} training examples from Hub")
                     except ValueError as e:
                         # Handle missing config name error
                         error_str = str(e)
                         if "Config name is missing" in error_str or "pick one among" in error_str:
-                            console.print(f"[yellow]⚠️ This dataset requires a specific configuration name.[/yellow]")
-                            console.print(f"[dim]Error: {error_str}[/dim]")
+                            logger.warning(f"This dataset requires a specific configuration name.")
+                            logger.debug(f"Error: {error_str}")
                             
-                            from rich.prompt import Prompt
-                            new_config = Prompt.ask("Please enter a configuration name (e.g., 'stage1')", default="stage1")
+                            new_config = input("Please enter a configuration name (e.g., \'stage1\') [default: \1]: ").strip() or "stage1"
                             
-                            console.print(f"[yellow]⏳ Retrying with config: {new_config}...[/yellow]")
+                            logger.info(f"⏳ Retrying with config: {new_config}...")
                             dataset = load_dataset(data_path, new_config, split="train")
-                            console.print(f"[green]✅ Loaded {len(dataset)} training examples from Hub[/green]")
+                            logger.info(f"SUCCESS: Loaded {len(dataset)} training examples from Hub")
                         else:
                             raise e
                 
         except Exception as e:
-            console.print(f"[red]Failed to load dataset: {e}[/red]")
+            logger.error(f"Failed to load dataset: {e}")
             return
         
         # 1.5 Data Preparation (Optional optimization)
         dataset = self._prepare_dataset(dataset)
         
         # Save prepared dataset to output folder
-        console.print(f"\n[bold cyan]💾 Saving prepared dataset to {self.dataset_output_dir}...[/bold cyan]")
+        logger.info(f"
+==== 💾 Saving prepared dataset to {self.dataset_output_dir}... ====")
         try:
             dataset.save_to_disk(str(self.dataset_output_dir))
-            console.print("[green]✅ Dataset saved successfully[/green]")
+            logger.info(f"SUCCESS: Dataset saved successfully")
         except Exception as e:
-            console.print(f"[yellow]⚠️ Could not save dataset copy: {e}[/yellow]")
+            logger.warning(f"Could not save dataset copy: {e}")
 
-        console.print(f"\n[bold yellow]🔄 Pulling/Loading Model & Tokenizer: {self.model_id}...[/bold yellow]")
+        logger.info(f"
+==== 🔄 Pulling/Loading Model & Tokenizer: {self.model_id}... ====")
 
         # 2. Load Tokenizer
         try:
             tokenizer = AutoTokenizer.from_pretrained(self.model_id)
             tokenizer.pad_token = tokenizer.eos_token
-            console.print("✅ Tokenizer Loaded")
+            logger.info(f"SUCCESS: Tokenizer Loaded")
         except Exception as e:
-            console.print(f"[red]Failed to load tokenizer: {e}[/red]")
+            logger.error(f"Failed to load tokenizer: {e}")
             return
         
         # 3. Load Base Model (Quantized)
@@ -210,9 +237,9 @@ class LLMTrainer:
         
         if self.adapter_path:
             # 4a. Load existing adapter
-            console.print(f"[bold cyan]🔄 Loading existing adapter: {self.adapter_path}...[/bold cyan]")
+            logger.info(f"[bold cyan]🔄 Loading existing adapter: {self.adapter_path}...[/bold cyan]")
             model = PeftModel.from_pretrained(model, self.adapter_path, is_trainable=True)
-            console.print("[green]✅ Adapter loaded and set to trainable[/green]")
+            logger.info("SUCCESS: Adapter loaded and set to trainable")
         else:
             # 4b. Create new LoRA Config
             peft_config = LoraConfig(
@@ -271,16 +298,16 @@ class LLMTrainer:
         )
         
         # 7. Train
-        console.print("\n[bold green]▶️ Starting training loop...[/bold green]\n")
+        logger.info("\n[bold green]▶️ Starting training loop...[/bold green]\n")
         trainer.train(resume_from_checkpoint=resume_from_checkpoint)
         
         # 8. Save
         adapter_path = self.model_output_dir / "final_adapter"
-        console.print("\n[bold cyan]💾 Saving adapter model...[/bold cyan]")
+        logger.info(f"
+==== 💾 Saving adapter model... ====")
         trainer.model.save_pretrained(adapter_path)
         
         # Display success summary
-        from rich.panel import Panel
         success_msg = f"""
 [bold green]✅ Training Complete![/bold green]
 
@@ -291,7 +318,9 @@ class LLMTrainer:
   from peft import PeftModel
   model = PeftModel.from_pretrained(base_model, "{adapter_path}")
 """
-        console.print(Panel(success_msg, title="🎉 Success", border_style="green"))
+logger.info("="*70)
+logger.info("Process complete")
+logger.info("="*70)
 
 
     def _format_prompts(self, example):
@@ -350,7 +379,8 @@ class LLMTrainer:
         Prepare and optimize dataset for training.
         Uses Granite 4 via Ollama to validate and fix data issues.
         """
-        console.print("\n[bold yellow]🔧 Preparing Dataset...[/bold yellow]")
+        logger.info(f"
+==== 🔧 Preparing Dataset... ====")
         
         original_count = len(dataset)
         
@@ -405,7 +435,7 @@ class LLMTrainer:
         filtered_count = len(dataset)
         
         if filtered_count < original_count:
-            console.print(f"  [dim]Removed {original_count - filtered_count} invalid samples[/dim]")
+            logger.info(f"  [dim]Removed {original_count - filtered_count} invalid samples[/dim]")
         
         # Step 2: Truncate very long samples for faster training
         def truncate_sample(example):
@@ -430,7 +460,7 @@ class LLMTrainer:
         # Step 3: Shuffle for better training
         dataset = dataset.shuffle(seed=42)
         
-        console.print(f"  [green]✅ Dataset ready: {len(dataset)} samples[/green]")
+        logger.info(f"  [green]✅ Dataset ready: {len(dataset)} samples")
         
         return dataset
 
@@ -565,35 +595,29 @@ Topics for {domain}:"""
         
         Returns path to generated JSONL file.
         """
-        from rich.panel import Panel
-        from rich.progress import Progress, SpinnerColumn, TextColumn
         import json
         
-        console.print(Panel.fit(
-            f"[bold cyan]🤖 Autonomous Fine-tuning Data Generation[/bold cyan]\n\n"
-            f"Domain: {domain}\n"
-            f"Target Q&A Pairs: {target_pairs}\n"
-            f"Quality Threshold: {quality_threshold}/10\n"
-            f"Teacher: {self.teacher_config['provider']}/{self.teacher_config['model']}",
-            title="Autonomous Fine-tuning",
-            border_style="green"
-        ))
+        logger.info("="*70)
+logger.info("Autonomous Fine-tuning Data Generation")
+logger.info("="*70)
         
         if not self.teacher:
             self._init_teacher()
         
         # Step 1: Generate curriculum
-        console.print("\n[bold yellow]Step 1: Generating Curriculum[/bold yellow]")
+        logger.info(f"
+==== Step 1: Generating Curriculum ====")
         topics = self.generate_curriculum(domain, num_topics=25)
-        console.print(f"[green]✓ Generated {len(topics)} topics[/green]")
+        logger.info(f"[green]✓ Generated {len(topics)} topics[/green]")
         
         for i, t in enumerate(topics[:5], 1):
-            console.print(f"  [dim]{i}. {t}[/dim]")
+            logger.info(f"  [dim]{i}. {t}[/dim]")
         if len(topics) > 5:
-            console.print(f"  [dim]... and {len(topics) - 5} more[/dim]")
+            logger.info(f"  [dim]... and {len(topics) - 5} more[/dim]")
         
         # Step 2: Generate Q&A pairs
-        console.print("\n[bold yellow]Step 2: Generating Q&A Pairs[/bold yellow]")
+        logger.info(f"
+==== Step 2: Generating Q&A Pairs ====")
         
         all_pairs = []
         pairs_per_topic = max(5, target_pairs // len(topics))
@@ -605,19 +629,20 @@ Topics for {domain}:"""
                 try:
                     pairs = self.generate_qa_pairs(f"{domain}: {topic}", num_pairs=pairs_per_topic)
                     all_pairs.extend(pairs)
-                    console.print(f"  [dim]Generated {len(pairs)} pairs for: {topic[:40]}...[/dim]")
+                    logger.info(f"  [dim]Generated {len(pairs)} pairs for: {topic[:40]}...[/dim]")
                 except Exception as e:
-                    console.print(f"  [yellow]⚠ Error for {topic}: {e}[/yellow]")
+                    logger.info(f"  [yellow]⚠ Error for {topic}: {e}[/yellow]")
                 
                 progress.advance(task)
                 
                 if len(all_pairs) >= target_pairs * 1.2:
                     break
         
-        console.print(f"[green]✓ Generated {len(all_pairs)} total Q&A pairs[/green]")
+        logger.info(f"[green]✓ Generated {len(all_pairs)} total Q&A pairs[/green]")
         
         # Step 3: Convert to ShareGPT format
-        console.print("\n[bold yellow]Step 3: Formatting for Fine-tuning[/bold yellow]")
+        logger.info(f"
+==== Step 3: Formatting for Fine-tuning ====")
         
         formatted_data = []
         for pair in all_pairs:
@@ -636,7 +661,9 @@ Topics for {domain}:"""
             for item in formatted_data:
                 f.write(json.dumps(item, ensure_ascii=False) + '\n')
         
-        console.print(Panel(f"""
+logger.info("="*70)
+logger.info("Process complete")
+logger.info("="*70)
 [bold green]✅ Fine-tuning Dataset Ready![/bold green]
 
 [yellow]Q&A Pairs:[/yellow] {len(formatted_data)}
@@ -663,7 +690,8 @@ Topics for {domain}:"""
             return dataset_path
         
         # Fine-tune model
-        console.print("\n[bold yellow]Step 4: Fine-tuning Model[/bold yellow]")
+        logger.info(f"
+==== Step 4: Fine-tuning Model ====")
         
         trainer = LLMTrainer(model_id=self.base_model)
         trainer.train(dataset_path)

@@ -13,7 +13,57 @@
 
 ---
 
-## 🌟 Gemini & Gemma Integration
+## 📦 Installation
+
+### As a Python Library (Recommended for programmatic use)
+
+```bash
+pip install saara-ai
+```
+
+This installs the core package with all data processing, ML training, and RAG capabilities. No CLI dependencies required.
+
+**Use in your Python code:**
+
+```python
+from saara import DataPipeline, LLMTrainer, PipelineConfig
+
+# Create configuration
+config = PipelineConfig(
+    output_directory="./datasets",
+    use_ocr=True,
+    ocr_model="qwen"
+)
+
+# Run pipeline
+pipeline = DataPipeline(config)
+result = pipeline.process_file("document.pdf", "my_dataset")
+
+# Fine-tune model
+trainer = LLMTrainer(config={"output_dir": "./models"})
+trainer.train("./datasets/training_data.jsonl")
+```
+
+### With Interactive CLI (Optional)
+
+If you want the interactive command-line interface with wizards and beautiful formatting:
+
+```bash
+# Install both core package and CLI tools
+pip install saara-ai saara-cli
+
+# Or install CLI which automatically installs saara-ai as dependency
+pip install saara-cli
+```
+
+**Then use the CLI:**
+
+```bash
+saara                    # Launch interactive mode
+saara version            # Show version
+```
+
+---
 
 ### Gemini 2.0 Flash - AI Teacher & Evaluator
 - **Default Teacher Model**: Uses Gemini 2.0 Flash for autonomous learning
