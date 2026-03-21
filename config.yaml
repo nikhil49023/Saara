@@ -1,0 +1,11 @@
+hardware:
+  ram_gb: 15.8
+  tier: light
+  vram_gb: 4.0
+ollama:
+  base_url: http://localhost:11434
+  model: qwen2.5:3b
+output:
+  directory: datasets
+pdf:
+  ocr_engine: moondream
