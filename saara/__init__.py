@@ -8,7 +8,7 @@ Powered by local-first inference (vLLM and Ollama)
 Released under the MIT License.
 """
 
-__version__ = "1.6.6"
+__version__ = "1.6.7"
 __author__ = "Kilani Sai Nikhil"
 __copyright__ = "Copyright (c) 2025-2026 Kilani Sai Nikhil"
 __license__ = "MIT"

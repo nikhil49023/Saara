@@ -37,6 +37,13 @@ SAARA is a modular framework for:
 
 It exposes a high-level public API via saara package imports and lazily loads heavyweight modules where possible.
 
+### Release Notes (1.6.7)
+
+- Simplified inference surface to local-only providers.
+- Unified local provider modes are now: `auto`, `vllm`, and `ollama`.
+- Removed cloud API quick helpers from the top-level quickstart interface.
+- Updated docs to reflect local-first usage and dependencies.
+
 ---
 
 ## 2) Installation and Environment Setup
