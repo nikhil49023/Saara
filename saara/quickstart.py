@@ -5,6 +5,7 @@ Quick & efficient patterns for:
 - Local inference (vLLM, Ollama)
 - Fine-tuning
 - Building datasets
+- Data format conversion
 - Everything manual, nothing automatic
 
 Released under the MIT License.
@@ -74,75 +75,6 @@ class QuickLLM:
 
 
 # =============================================================================
-# Quick Tokenization
-# =============================================================================
-
-class QuickTokenizer:
-    """
-    Simple tokenizer creation and training.
-
-    Examples:
-        >>> # BPE tokenizer
-        >>> tok = QuickTokenizer("bpe", vocab_size=32000)
-        >>> tok.train(texts)
-        >>> tokens = tok.encode("hello world")
-
-        >>> # WordPiece
-        >>> tok = QuickTokenizer("wordpiece", vocab_size=30522)
-        >>> tok.train(texts)
-
-        >>> # Byte-level (universal)
-        >>> tok = QuickTokenizer("byte")
-        >>> tokens = tok.encode("hello 你好 🚀")
-    """
-
-    def __init__(self, tokenizer_type: str = "bpe", vocab_size: int = 32000, **kwargs):
-        """
-        Initialize Quick Tokenizer.
-
-        Args:
-            tokenizer_type: "bpe", "wordpiece", "byte"
-            vocab_size: Vocabulary size
-            **kwargs: Additional arguments for tokenizer
-        """
-        from saara.tokenizers import create_tokenizer
-
-        self.tokenizer_type = tokenizer_type
-        self.vocab_size = vocab_size
-        self.tokenizer = create_tokenizer(tokenizer_type, **kwargs)
-
-    def train(self, texts: List[str]) -> None:
-        """Train tokenizer."""
-        logger.info(f"Training {self.tokenizer_type} tokenizer...")
-        self.tokenizer.train(texts, vocab_size=self.vocab_size)
-
-    def encode(self, text: str) -> List[int]:
-        """Encode text."""
-        return self.tokenizer.encode(text)
-
-    def decode(self, token_ids: List[int]) -> str:
-        """Decode tokens."""
-        return self.tokenizer.decode(token_ids)
-
-    def save(self, directory: str) -> None:
-        """Save tokenizer."""
-        self.tokenizer.save(directory)
-        logger.info(f"Tokenizer saved to {directory}")
-
-    @classmethod
-    def load(cls, directory: str, tokenizer_type: str = "bpe") -> "QuickTokenizer":
-        """Load tokenizer."""
-        from saara.tokenizers import TokenizerRegistry
-
-        tok_instance = TokenizerRegistry.create(tokenizer_type)
-        tok_instance = tok_instance.load(directory)
-
-        quick = cls(tokenizer_type)
-        quick.tokenizer = tok_instance
-        return quick
-
-
-# =============================================================================
 # Quick Dataset Processing
 # =============================================================================
 
@@ -151,7 +83,7 @@ class QuickDataset:
     Simple dataset loading, processing, and saving.
 
     Examples:
-        >>> from saara.file_utils import load_jsonl, save_jsonl, extract_texts
+        >>> from saara.file_utils import load_jsonl, save_jsonl
         >>> from saara.quickstart import QuickDataset
 
         >>> # Load data
@@ -209,6 +141,21 @@ class QuickDataset:
             prompt_field=prompt_field,
             response_field=response_field
         )
+
+    def convert_format(self, target_format: str, system_prompt: str = "") -> List[Dict]:
+        """
+        Convert dataset to a training format.
+
+        Args:
+            target_format: One of: alpaca, chatml, sharegpt, completion, dpo
+            system_prompt: Optional system prompt for chat formats
+
+        Returns:
+            Converted data in target format
+        """
+        from saara.formats import convert_dataset
+
+        return convert_dataset(self.records, target_format, system_prompt=system_prompt)
 
     def split(
         self,
@@ -339,9 +286,9 @@ def vllm_local(model: str = "mistral") -> QuickLLM:
 
 def simple_workflow_example():
     """
-    Complete example: Load data → Tokenize → Generate with LLM
+    Complete example: Load data -> Process -> Convert format
 
-    This is a reference for how to use SAARA in a simple way.
+    This is a reference for how to use SAARA pipeline.
     """
     # Step 1: Load data
     from saara.file_utils import load_jsonl, save_jsonl
@@ -354,23 +301,17 @@ def simple_workflow_example():
     texts = ds.get_texts("text")
     print(f"Found {len(texts)} texts")
 
-    # Step 3: Train tokenizer
-    tokenizer = QuickTokenizer("bpe", vocab_size=32000)
-    tokenizer.train(texts[:1000])
-    tokenizer.save("my_tokenizer")
-    print("Tokenizer trained")
+    # Step 3: Convert to training format
+    alpaca_data = ds.convert_format("alpaca")
+    print(f"Converted to {len(alpaca_data)} Alpaca samples")
 
-    # Step 4: Use LLM
+    # Step 4: Use LLM for labeling/processing
     llm = ollama_local("granite3.1-dense:8b")
-    result = llm.generate("Explain tokenization in simple terms")
+    result = llm.generate("Explain fine-tuning in simple terms")
     print(f"LLM result: {result}")
 
     # Step 5: Save results
-    output_data = [
-        {"text": text, "tokenized": tokenizer.encode(text)[:50]}
-        for text in texts[:10]
-    ]
-    save_jsonl(output_data, "output_tokens.jsonl")
+    save_jsonl(alpaca_data, "output_alpaca.jsonl")
     print("Results saved")
 
 
@@ -380,7 +321,6 @@ def simple_workflow_example():
 
 __all__ = [
     "QuickLLM",
-    "QuickTokenizer",
     "QuickDataset",
     "QuickFineTune",
     "ollama_local",

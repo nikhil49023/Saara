@@ -1,6 +1,14 @@
 """
 Dataset Generator Module
 Converts labeled data into various dataset formats for training.
+
+Supported output formats (via formats module):
+- Alpaca: Domain adaptation, instruction tuning
+- ChatML: Chatbot/assistant training
+- ShareGPT: Multi-turn conversations
+- Completion: Base model continuation
+- DPO: RLHF alignment with preference pairs
+- ChatML Tools: Function calling/agent training
 """
 
 import json
@@ -14,6 +22,15 @@ from datetime import datetime
 import pandas as pd
 
 from .labeler import LabeledDocument, LabeledChunk
+from .formats import (
+    FormatRegistry,
+    AlpacaFormat,
+    ShareGPTFormat,
+    ChatMLFormat,
+    CompletionFormat,
+    DPOFormat,
+    FormatConfig,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,14 +128,13 @@ class DatasetGenerator:
         text_data = self._collect_text_data(labeled_docs)
         if text_data:
             files = self._save_dataset(
-                text_data, 
+                text_data,
                 f"{dataset_name}_pretrain",
                 "Pretraining"
             )
             output_files['pretrain'] = files
 
-        # Generate ShareGPT format (Guru Training Data)
-        # We combine QA and Instruction data for this
+        # Generate ShareGPT format (multi-turn conversations)
         if 'sharegpt' in self.formats:
             sharegpt_source = qa_data + instruction_data
             if sharegpt_source:
@@ -127,7 +143,36 @@ class DatasetGenerator:
                 self._save_jsonl(sharegpt_ready, sharegpt_path)
                 output_files['sharegpt'] = str(sharegpt_path)
                 logger.info(f"Saved ShareGPT dataset: {sharegpt_path}")
-        
+
+        # Generate Alpaca format (domain adaptation)
+        if 'alpaca' in self.formats:
+            alpaca_source = instruction_data + qa_data
+            if alpaca_source:
+                alpaca_ready = AlpacaFormatGenerator.convert(alpaca_source)
+                alpaca_path = self.output_dir / f"{dataset_name}_alpaca.jsonl"
+                self._save_jsonl(alpaca_ready, alpaca_path)
+                output_files['alpaca'] = str(alpaca_path)
+                logger.info(f"Saved Alpaca dataset: {alpaca_path}")
+
+        # Generate ChatML format (chatbot/assistant)
+        if 'chatml' in self.formats:
+            chatml_source = instruction_data + qa_data
+            if chatml_source:
+                chatml_ready = ChatMLFormatGenerator.convert(chatml_source)
+                chatml_path = self.output_dir / f"{dataset_name}_chatml.jsonl"
+                self._save_jsonl(chatml_ready, chatml_path)
+                output_files['chatml'] = str(chatml_path)
+                logger.info(f"Saved ChatML dataset: {chatml_path}")
+
+        # Generate Completion format (base model continuation)
+        if 'completion' in self.formats:
+            if text_data:
+                completion_ready = CompletionFormatGenerator.convert(text_data)
+                completion_path = self.output_dir / f"{dataset_name}_completion.jsonl"
+                self._save_jsonl(completion_ready, completion_path)
+                output_files['completion'] = str(completion_path)
+                logger.info(f"Saved Completion dataset: {completion_path}")
+
         # Generate combined dataset statistics
         self._save_statistics(labeled_docs, dataset_name, output_files)
         
@@ -388,59 +433,75 @@ class DatasetGenerator:
 
 
 class AlpacaFormatGenerator:
-    """Generate datasets in Alpaca format for instruction tuning."""
-    
+    """
+    Generate datasets in Alpaca format for instruction tuning.
+
+    Delegates to formats.AlpacaFormat for actual conversion.
+    """
+
     @staticmethod
     def convert(data: List[Dict]) -> List[Dict]:
         """Convert to Alpaca format."""
-        alpaca_data = []
-        
-        for item in data:
-            alpaca_item = {
-                'instruction': item.get('instruction', item.get('question', '')),
-                'input': item.get('input', item.get('context', '')),
-                'output': item.get('output', item.get('answer', item.get('response', '')))
-            }
-            
-            if alpaca_item['instruction'] and alpaca_item['output']:
-                alpaca_data.append(alpaca_item)
-        
-        return alpaca_data
+        converter = AlpacaFormat()
+        return converter.convert(data)
 
 
 class ShareGPTFormatGenerator:
-    """Generate datasets in ShareGPT conversation format."""
-    
+    """
+    Generate datasets in ShareGPT conversation format.
+
+    Delegates to formats.ShareGPTFormat for actual conversion.
+    """
+
     SYSTEM_PROMPT = "You are AyurGuru, an expert AI Ayurvedic doctor. Answer queries using authentic Samhita knowledge."
-    
+
     @staticmethod
     def convert(data: List[Dict], system_prompt: str = None) -> List[Dict]:
         """Convert to ShareGPT format."""
-        sharegpt_data = []
         sys_prompt = system_prompt or ShareGPTFormatGenerator.SYSTEM_PROMPT
-        
-        for item in data:
-            # Map keys (handling both q/a and question/answer formats)
-            human_val = item.get('question', item.get('q', item.get('instruction', '')))
-            gpt_val = item.get('answer', item.get('a', item.get('output', item.get('response', ''))))
-            
-            if human_val and gpt_val:
-                conversation = {
-                    "conversations": [
-                        {
-                            "from": "system", 
-                            "value": sys_prompt
-                        },
-                        {
-                            "from": "human",
-                            "value": human_val
-                        },
-                        {
-                            "from": "gpt", 
-                            "value": gpt_val
-                        }
-                    ]
-                }
-                sharegpt_data.append(conversation)
-        
-        return sharegpt_data
+        config = FormatConfig(system_prompt=sys_prompt, include_system=True)
+        converter = ShareGPTFormat(config)
+        return converter.convert(data)
+
+
+class ChatMLFormatGenerator:
+    """
+    Generate datasets in ChatML format for chatbot training.
+
+    Delegates to formats.ChatMLFormat for actual conversion.
+    """
+
+    @staticmethod
+    def convert(data: List[Dict], system_prompt: str = "") -> List[Dict]:
+        """Convert to ChatML format."""
+        config = FormatConfig(system_prompt=system_prompt, include_system=bool(system_prompt))
+        converter = ChatMLFormat(config)
+        return converter.convert(data)
+
+
+class CompletionFormatGenerator:
+    """
+    Generate datasets in completion format for base model pretraining.
+
+    Delegates to formats.CompletionFormat for actual conversion.
+    """
+
+    @staticmethod
+    def convert(data: List[Dict]) -> List[Dict]:
+        """Convert to completion format."""
+        converter = CompletionFormat()
+        return converter.convert(data)
+
+
+class DPOFormatGenerator:
+    """
+    Generate datasets in DPO format for preference-based alignment.
+
+    Delegates to formats.DPOFormat for actual conversion.
+    """
+
+    @staticmethod
+    def convert(data: List[Dict]) -> List[Dict]:
+        """Convert to DPO format."""
+        converter = DPOFormat()
+        return converter.convert(data)

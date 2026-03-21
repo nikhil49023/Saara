@@ -1,14 +1,15 @@
 """
 Saara: Autonomous Document-to-LLM Data Factory SDK.
 
-🪔 ज्ञानस्य सारः - The Essence of Knowledge
+ज्ञानस्य सारः - The Essence of Knowledge
 
-Powered by local-first inference (vLLM and Ollama)
+AI-powered data processing pipeline for converting documents to training datasets.
+No tokenization - pure data processing automation.
 
 Released under the MIT License.
 """
 
-__version__ = "1.6.7"
+__version__ = "1.7.0"
 __author__ = "Kilani Sai Nikhil"
 __copyright__ = "Copyright (c) 2025-2026 Kilani Sai Nikhil"
 __license__ = "MIT"
@@ -128,28 +129,6 @@ def __getattr__(name):
         from .cloud_runtime import is_cloud_environment
         return is_cloud_environment
 
-    # AI Tokenizer
-    if name == "AIEnhancedTokenizer":
-        from .ai_tokenizer import AIEnhancedTokenizer
-        return AIEnhancedTokenizer
-
-    if name == "create_ai_tokenizer":
-        from .ai_tokenizer import create_ai_tokenizer
-        return create_ai_tokenizer
-
-    # Token Storage (Pre-tokenization)
-    if name == "TokenStorage":
-        from .token_storage import TokenStorage
-        return TokenStorage
-
-    if name == "TokenStorageConfig":
-        from .token_storage import TokenStorageConfig
-        return TokenStorageConfig
-
-    if name == "quick_tokenize":
-        from .token_storage import quick_tokenize
-        return quick_tokenize
-
     # Training Pipeline (Modular)
     if name == "TrainingPipeline":
         from .training_pipeline import TrainingPipeline
@@ -193,26 +172,53 @@ def __getattr__(name):
         from .llm_providers import quick_generate
         return quick_generate
 
-    # Tokenizers (flexible, built-in BPE/WordPiece)
-    if name == "create_tokenizer":
-        from .tokenizers import create_tokenizer
-        return create_tokenizer
+    # =========================================================================
+    # Dataset Formats Module (NEW)
+    # =========================================================================
+    if name == "FormatRegistry":
+        from .formats import FormatRegistry
+        return FormatRegistry
 
-    if name == "TokenizerRegistry":
-        from .tokenizers import TokenizerRegistry
-        return TokenizerRegistry
+    if name == "FormatType":
+        from .formats import FormatType
+        return FormatType
 
-    if name == "BPETokenizer":
-        from .tokenizers import BPETokenizer
-        return BPETokenizer
+    if name == "FormatConfig":
+        from .formats import FormatConfig
+        return FormatConfig
 
-    if name == "WordPieceTokenizer":
-        from .tokenizers import WordPieceTokenizer
-        return WordPieceTokenizer
+    if name == "convert_dataset":
+        from .formats import convert_dataset
+        return convert_dataset
 
-    if name == "ByteTokenizer":
-        from .tokenizers import ByteTokenizer
-        return ByteTokenizer
+    if name == "load_and_convert":
+        from .formats import load_and_convert
+        return load_and_convert
+
+    # Individual format converters
+    if name == "AlpacaFormat":
+        from .formats import AlpacaFormat
+        return AlpacaFormat
+
+    if name == "ChatMLFormat":
+        from .formats import ChatMLFormat
+        return ChatMLFormat
+
+    if name == "ShareGPTFormat":
+        from .formats import ShareGPTFormat
+        return ShareGPTFormat
+
+    if name == "CompletionFormat":
+        from .formats import CompletionFormat
+        return CompletionFormat
+
+    if name == "DPOFormat":
+        from .formats import DPOFormat
+        return DPOFormat
+
+    if name == "ChatMLToolsFormat":
+        from .formats import ChatMLToolsFormat
+        return ChatMLToolsFormat
 
     # File utilities (manual file handling)
     if name == "load_from_file":
@@ -244,10 +250,6 @@ def __getattr__(name):
         from .quickstart import QuickLLM
         return QuickLLM
 
-    if name == "QuickTokenizer":
-        from .quickstart import QuickTokenizer
-        return QuickTokenizer
-
     if name == "QuickDataset":
         from .quickstart import QuickDataset
         return QuickDataset
@@ -265,9 +267,10 @@ def __getattr__(name):
         return vllm_local
 
     # QuickAPI (dead-simple end-to-end pipeline)
+    # Import using importlib to avoid recursion
     if name == "quickapi":
-        from . import quickapi as _quickapi
-        return _quickapi
+        import importlib
+        return importlib.import_module('.quickapi', 'saara')
 
     raise AttributeError(f"module 'saara' has no attribute '{name}'")
 
@@ -317,13 +320,7 @@ __all__ = [
     "CloudRuntime",
     "setup_colab",
     "is_cloud_environment",
-    # AI Tokenizer
-    "AIEnhancedTokenizer",
-    "create_ai_tokenizer",
-    # Token Storage & Modular Training
-    "TokenStorage",
-    "TokenStorageConfig",
-    "quick_tokenize",
+    # Modular Training
     "TrainingPipeline",
     "TrainingPipelineConfig",
     "quick_train",
@@ -336,12 +333,18 @@ __all__ = [
     "UnifiedLLM",
     "create_llm",
     "quick_generate",
-    # Tokenizers (flexible)
-    "create_tokenizer",
-    "TokenizerRegistry",
-    "BPETokenizer",
-    "WordPieceTokenizer",
-    "ByteTokenizer",
+    # Dataset Formats (NEW)
+    "FormatRegistry",
+    "FormatType",
+    "FormatConfig",
+    "convert_dataset",
+    "load_and_convert",
+    "AlpacaFormat",
+    "ChatMLFormat",
+    "ShareGPTFormat",
+    "CompletionFormat",
+    "DPOFormat",
+    "ChatMLToolsFormat",
     # File utilities
     "load_from_file",
     "save_to_file",
@@ -351,7 +354,6 @@ __all__ = [
     "split_dataset",
     # Quickstart
     "QuickLLM",
-    "QuickTokenizer",
     "QuickDataset",
     "QuickFineTune",
     "ollama_local",
