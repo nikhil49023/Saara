@@ -137,6 +137,32 @@ def __getattr__(name):
         from .ai_tokenizer import create_ai_tokenizer
         return create_ai_tokenizer
 
+    # Token Storage (Pre-tokenization)
+    if name == "TokenStorage":
+        from .token_storage import TokenStorage
+        return TokenStorage
+
+    if name == "TokenStorageConfig":
+        from .token_storage import TokenStorageConfig
+        return TokenStorageConfig
+
+    if name == "quick_tokenize":
+        from .token_storage import quick_tokenize
+        return quick_tokenize
+
+    # Training Pipeline (Modular)
+    if name == "TrainingPipeline":
+        from .training_pipeline import TrainingPipeline
+        return TrainingPipeline
+
+    if name == "TrainingPipelineConfig":
+        from .training_pipeline import TrainingPipelineConfig
+        return TrainingPipelineConfig
+
+    if name == "quick_train":
+        from .training_pipeline import quick_train
+        return quick_train
+
     # RAG Engine
     if name == "RAGEngine":
         from .rag_engine import RAGEngine
@@ -205,6 +231,13 @@ __all__ = [
     # AI Tokenizer
     "AIEnhancedTokenizer",
     "create_ai_tokenizer",
+    # Token Storage & Modular Training
+    "TokenStorage",
+    "TokenStorageConfig",
+    "quick_tokenize",
+    "TrainingPipeline",
+    "TrainingPipelineConfig",
+    "quick_train",
     # RAG Engine
     "RAGEngine",
     "RAGManager",
