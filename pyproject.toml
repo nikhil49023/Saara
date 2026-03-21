@@ -49,7 +49,6 @@ dependencies = [
     "trl>=0.7.0",
     "bitsandbytes>=0.41.0",
     "accelerate>=0.24.0",
-    "google-generativeai>=0.8.0",
     "sentencepiece>=0.1.99",
 ]
 
