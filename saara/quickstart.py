@@ -2,8 +2,7 @@
 Quickstart Module - Simple patterns for all devices
 
 Quick & efficient patterns for:
-- Local inference (Ollama)
-- Cloud APIs (Gemini, OpenAI, Claude, Nemotron)
+- Local inference (vLLM, Ollama)
 - Fine-tuning
 - Building datasets
 - Everything manual, nothing automatic
@@ -23,23 +22,17 @@ logger = logging.getLogger(__name__)
 
 class QuickLLM:
     """
-    Fast LLM inference with any provider.
+    Fast local LLM inference.
 
     Examples:
+        >>> # Auto local backend (vLLM preferred, Ollama fallback)
+        >>> llm = QuickLLM("auto", model="mistral")
+
+        >>> # Force vLLM backend
+        >>> llm = QuickLLM("vllm", model="mistral")
+
         >>> # Ollama (local, no API key needed)
         >>> llm = QuickLLM("ollama", model="granite3.1-dense:8b")
-
-        >>> # Gemini
-        >>> llm = QuickLLM("gemini", api_key="...", model="gemini-2.0-flash")
-
-        >>> # OpenAI
-        >>> llm = QuickLLM("openai", api_key="...", model="gpt-4")
-
-        >>> # Anthropic (Claude)
-        >>> llm = QuickLLM("anthropic", api_key="...", model="claude-opus-4-6")
-
-        >>> # Nemotron
-        >>> llm = QuickLLM("nemotron", api_key="...")
 
         >>> # Use it
         >>> result = llm.generate("Explain AI in one sentence")
@@ -48,8 +41,7 @@ class QuickLLM:
 
     def __init__(
         self,
-        provider: str = "ollama",
-        api_key: Optional[str] = None,
+        provider: str = "auto",
         model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: int = 2048
@@ -58,8 +50,7 @@ class QuickLLM:
         Initialize Quick LLM.
 
         Args:
-            provider: "ollama", "gemini", "openai", "anthropic", "nemotron", "groq"
-            api_key: API key (not needed for ollama)
+            provider: "auto", "vllm", or "ollama"
             model: Model name
             temperature: Generation temperature
             max_tokens: Max tokens to generate
@@ -68,7 +59,6 @@ class QuickLLM:
 
         self.llm = create_llm(
             provider=provider,
-            api_key=api_key,
             model=model,
             temperature=temperature,
             max_tokens=max_tokens
@@ -338,24 +328,9 @@ def ollama_local(model: str = "granite3.1-dense:8b") -> QuickLLM:
     return QuickLLM("ollama", model=model)
 
 
-def gemini_api(api_key: str, model: str = "gemini-2.0-flash") -> QuickLLM:
-    """Quick Gemini API inference."""
-    return QuickLLM("gemini", api_key=api_key, model=model)
-
-
-def openai_api(api_key: str, model: str = "gpt-4") -> QuickLLM:
-    """Quick OpenAI inference."""
-    return QuickLLM("openai", api_key=api_key, model=model)
-
-
-def claude_api(api_key: str, model: str = "claude-opus-4-6") -> QuickLLM:
-    """Quick Claude (Anthropic) inference."""
-    return QuickLLM("anthropic", api_key=api_key, model=model)
-
-
-def nemotron_api(api_key: str) -> QuickLLM:
-    """Quick NVIDIA Nemotron inference."""
-    return QuickLLM("nemotron", api_key=api_key)
+def vllm_local(model: str = "mistral") -> QuickLLM:
+    """Quick local vLLM inference."""
+    return QuickLLM("vllm", model=model)
 
 
 # =============================================================================
@@ -409,10 +384,7 @@ __all__ = [
     "QuickDataset",
     "QuickFineTune",
     "ollama_local",
-    "gemini_api",
-    "openai_api",
-    "claude_api",
-    "nemotron_api",
+    "vllm_local",
     "simple_workflow_example",
 ]
 

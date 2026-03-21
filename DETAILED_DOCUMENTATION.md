@@ -64,7 +64,7 @@ pip install -e '.[dev]'
 
 ```bash
 pip install torch transformers peft trl
-pip install openai anthropic google-generativeai groq
+pip install vllm ollama
 pip install pymupdf pdfplumber pyarrow pandas
 ```
 
@@ -240,10 +240,7 @@ These are importable directly from saara.
 | QuickDataset | class | Simplified dataset wrapper |
 | QuickFineTune | class | Simplified fine-tune wrapper |
 | ollama_local | function | Quick local Ollama client |
-| gemini_api | function | Quick Gemini client |
-| openai_api | function | Quick OpenAI client |
-| claude_api | function | Quick Anthropic client |
-| nemotron_api | function | Quick Nemotron client |
+| vllm_local | function | Quick local vLLM client |
 
 ---
 
@@ -334,8 +331,8 @@ print(run_info)
 ```python
 from saara import create_llm
 
-primary = create_llm(provider="ollama", model="granite4")
-fallback = create_llm(provider="gemini", api_key="YOUR_KEY", model="gemini-2.0-flash")
+primary = create_llm(provider="vllm", model="mistral")
+fallback = create_llm(provider="ollama", model="mistral")
 
 prompt = "Write a concise release note for SAARA improvements."
 
@@ -440,7 +437,7 @@ python -m isort saara/ examples/ --check-only --profile black --line-length 100
 | Capability | Dependencies |
 |---|---|
 | Fine-tuning | torch, transformers, peft, trl |
-| Cloud LLM providers | openai, anthropic, google-generativeai, groq |
+| Local LLM providers | vllm, ollama |
 | PDF and OCR pipeline | pymupdf, pdfplumber |
 | Parquet and dataframe workflows | pyarrow, pandas |
 

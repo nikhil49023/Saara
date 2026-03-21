@@ -1,8 +1,7 @@
 # 🧠 SAARA: Autonomous Document-to-LLM Data Engine
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Gemini Powered](https://img.shields.io/badge/Gemini_2.0-Powered-4285F4.svg)](https://ai.google.dev/)
-[![Gemma Models](https://img.shields.io/badge/Gemma_2-Optimized-34A853.svg)](https://ai.google.dev/gemma)
+[![Local Inference](https://img.shields.io/badge/Inference-vLLM%20%7C%20Ollama-0ea5e9.svg)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 > Open-source framework for autonomous document-to-LLM data pipelines.
@@ -65,17 +64,11 @@ saara version            # Show version
 
 ---
 
-### Gemini 2.0 Flash - AI Teacher & Evaluator
-- **Default Teacher Model**: Uses Gemini 2.0 Flash for autonomous learning
-- **Quality Evaluation**: Scores and improves model responses
-- **Data Generation**: Creates high-quality training examples
-- **Self-Improvement**: Iterative correction loop powered by Gemini
-
-### Gemma 2 - Fine-Tuning Targets  
-- **Gemma 2 2B**: Lightweight, CPU-trainable, perfect for domain-specific models
-- **Gemma 2 9B**: Production-ready with excellent performance
-- **Pre-configured**: Optimized LoRA settings for Gemma architecture
-- **First-Class Support**: Gemma models are highlighted and recommended
+### Local-First Inference
+- **vLLM + Ollama**: Local inference backends with automatic fallback
+- **Private by default**: No external API dependency for core workflows
+- **Simple setup**: Run locally with minimal configuration
+- **Production-ready**: Health checks and stable local runtime
 
 ---
 
@@ -92,8 +85,8 @@ saara version            # Show version
 - Handles complex double-column layouts, tables, and scientific diagrams that traditional OCR (Tesseract) fails on.
 - **Hybrid Fallback**: Automatically switches between PyMuPDF (fast) and Vision OCR (accurate) based on page extractability.
 
-### 2. 🤖 Autonomous Data Labeling (Gemini-Powered)
-- Uses **Gemini 2.0 Flash** as the default teacher model for:
+### 2. 🤖 Autonomous Data Labeling (Local Inference)
+- Uses local inference backends (**vLLM/Ollama**) for:
     - **Instruction Tuning**: "How do I treat X using Ayurveda?"
     - **Q&A Pairs**: Fact-based extraction.
     - **Summarization**: TL;DRs of complex sections.
@@ -115,9 +108,9 @@ saara version            # Show version
 - **Multi-Format Support**: Automatically handles ShareGPT, Alpaca, and Raw Text formats.
 - Optimized for consumer GPUs (supports 4-bit quantization).
 
-### 6. 🧪 Model Evaluation & Self-Improvement (Gemini Judge)
-- **Gemini 2.0 as Judge**: Test your fine-tuned model with automatic quality scoring.
-- **Self-Improvement Loop**: Low-scoring responses are corrected by Gemini and used for next training round.
+### 6. 🧪 Model Evaluation & Self-Improvement
+- Evaluate fine-tuned models with local inference-based scoring loops.
+- Self-improvement loop generates correction data without external APIs.
 - **Iterative Enhancement**: Train → Evaluate → Improve → Repeat.
 
 ### 7. 🚀 Model Deployment
@@ -321,9 +314,9 @@ The training wizard now supports:
 
 ---
 
-### 🧪 Model Evaluation Flow (Gemini-Powered)
+### 🧪 Model Evaluation Flow (Local Inference)
 
-Uses **Gemini 2.0 Flash** to evaluate your fine-tuned model:
+Uses local inference backends (**vLLM/Ollama**) to evaluate your fine-tuned model:
 
 1. Runs test prompts through your model
 2. Scores each response (1-10) using Gemini
@@ -332,7 +325,7 @@ Uses **Gemini 2.0 Flash** to evaluate your fine-tuned model:
 
 **Self-Improvement Cycle:**
 ```
-Train Model → Evaluate (Gemini 2.0) → Generate Corrections → Retrain → Repeat
+Train Model → Evaluate (Local LLM) → Generate Corrections → Retrain → Repeat
 ```
 
 ---
@@ -399,14 +392,6 @@ Train Model → Evaluate (Gemini 2.0) → Generate Corrections → Retrain → R
 | `saara visualize` | Visualize neural network architecture |
 | `saara visualize --report` | Generate HTML training report |
 | `saara benchmark` | Benchmark training performance |
-
-### Cloud Runtime *(NEW)*
-
-| Command | Description |
-|---------|-------------|
-| `saara cloud info` | Show cloud environment info |
-| `saara cloud setup` | Configure cloud API keys |
-| `saara cloud quickstart` | Show Colab quickstart guide |
 
 ### AI Tokenizer *(NEW)*
 

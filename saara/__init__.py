@@ -3,7 +3,7 @@ Saara: Autonomous Document-to-LLM Data Factory SDK.
 
 🪔 ज्ञानस्य सारः - The Essence of Knowledge
 
-Powered by Google Gemini 2.0 Flash & Gemma 2 Models
+Powered by local-first inference (vLLM and Ollama)
 
 Released under the MIT License.
 """
@@ -260,21 +260,9 @@ def __getattr__(name):
         from .quickstart import ollama_local
         return ollama_local
 
-    if name == "gemini_api":
-        from .quickstart import gemini_api
-        return gemini_api
-
-    if name == "openai_api":
-        from .quickstart import openai_api
-        return openai_api
-
-    if name == "claude_api":
-        from .quickstart import claude_api
-        return claude_api
-
-    if name == "nemotron_api":
-        from .quickstart import nemotron_api
-        return nemotron_api
+    if name == "vllm_local":
+        from .quickstart import vllm_local
+        return vllm_local
 
     # QuickAPI (dead-simple end-to-end pipeline)
     if name == "quickapi":
@@ -367,8 +355,5 @@ __all__ = [
     "QuickDataset",
     "QuickFineTune",
     "ollama_local",
-    "gemini_api",
-    "openai_api",
-    "claude_api",
-    "nemotron_api",
+    "vllm_local",
 ]
