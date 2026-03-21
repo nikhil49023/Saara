@@ -79,6 +79,12 @@ saara version            # Show version
 
 ---
 
+## 📚 Documentation
+
+- Detailed guide with module-level API reference and code snippets: [DETAILED_DOCUMENTATION.md](DETAILED_DOCUMENTATION.md)
+
+---
+
 ## 🚀 Key Features
 
 ### 1. 👁️ SOTA Vision-LLM OCR
