@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="saara-ai",
-    version="1.6.4",
+    version="1.6.5",
     description="SAARA: Autonomous Document-to-LLM Data Engine with Pre-training, Cloud Runtime & AI Tokenizer",
     author="Kilani Sai Nikhil",
     packages=find_packages(),
