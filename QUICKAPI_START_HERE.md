@@ -9,8 +9,8 @@
 ```python
 from saara import quickapi
 
-# One-time configuration (2 minutes)
-quickapi.setup(model="mistral")
+# One-time configuration (picks up Ollama automatically)
+quickapi.setup("ollama")
 
 # Now use it! (3 lines per operation)
 pdf_data = quickapi.dataExtract_PDF("document.pdf")
@@ -29,8 +29,8 @@ Creates configuration and loads your LLM model.
 
 ```python
 quickapi.setup(
-    model="mistral",                    # LLM to use
-    inference_backend="auto"            # auto | vllm | ollama
+    "ollama",                           # backend: ollama | vllm | auto
+    model="mistral"                     # model name
 )
 ```
 
@@ -108,24 +108,50 @@ clean_data = quickapi.dataDistill_Dataset(labeled_data)
 
 ---
 
-### 5️⃣ **`dataTokenize_Dataset(cleaned_data)`** — Prepare for Training
+### 5️⃣ **`dataGenerate_Distillation(seed_prompts)`** — Synthetic Data / Model Distillation
 
-Converts text to token format ready for model training.
+Run seed prompts through the teacher model and collect responses as training data for a smaller student model.
 
 ```python
-tokens = quickapi.dataTokenize_Dataset(clean_data)
+# From a list of prompts (Ollama)
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts=[
+        "Explain the difference between TCP and UDP",
+        "What is gradient descent and why is it used?",
+        "Describe how attention mechanisms work in transformers",
+    ],
+    format="alpaca",
+    responses_per_prompt=1
+)
+print(f"Generated {result['total_samples']} samples → {result['output_file']}")
 
-# Returns:
-# {
-#   "tokens": [...],
-#   "token_count": 45320,
-#   "format": "default"
-# }
+# From a file (vLLM — faster for large batches)
+quickapi.setup("vllm", model="mistral")
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts="my_prompts.txt",   # one prompt per line
+    format="chatml",
+    responses_per_prompt=3,          # 3 diverse responses per prompt
+    diversity_mode=True,             # vary temperature for diversity
+    system_prompt="You are a precise technical expert."
+)
+
+# DPO dataset (chosen / rejected pairs)
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts=["Compare SQL and NoSQL databases"],
+    format="dpo",
+    responses_per_prompt=2           # automatically splits chosen vs rejected
+)
 ```
 
-✅ **Output**: Training-ready format  
-✅ **Handles**: BPE tokenization, normalization  
-✅ **Speed**: Instant
+Or using the short alias:
+```python
+result = quickapi.synthesize(my_prompts, format="alpaca")
+```
+
+✅ **Teacher model**: Whatever backend you configured in `setup()`  
+✅ **Formats**: alpaca, chatml, sharegpt, completion, dpo  
+✅ **DPO support**: Pass `responses_per_prompt=2, format="dpo"`  
+✅ **File input**: Pass path to `.txt` (one prompt/line) or `.jsonl`
 
 ---
 
@@ -155,7 +181,7 @@ alpaca_format = quickapi.dataConvert_Format(
 from saara import quickapi
 
 # Step 1: Setup (one time)
-quickapi.setup(model="mistral")
+quickapi.setup("ollama", model="mistral")
 
 # Step 2: Process multiple PDFs
 pdfs = ["doc1.pdf", "doc2.pdf", "doc3.pdf"]
@@ -180,31 +206,39 @@ print(f"✅ Ready for training: {final_dataset['output_file']}")
 
 ---
 
-## ⚙️ Configuration Tips
+## ⚙️ Backend Options: Ollama vs vLLM
 
-### Faster Processing (Less Accurate)
+### 🦙 Ollama — Recommended for most users
 ```python
+# Start Ollama first: ollama serve
+# Pull a model:       ollama pull mistral
+
 quickapi.setup(
-    model="phi2",                    # Smaller, faster model
-    inference_backend="ollama"       # Lower latency
+    "ollama",
+    model="mistral"          # or: llama3, granite3.1-dense:8b, qwen2.5, etc.
 )
 ```
+✅ CPU-friendly, installs in minutes, no GPU required  
+✅ Best for: laptops, small servers, local dev
 
-### Better Quality (Slower)
+### ⚡ vLLM — For GPU servers (faster throughput)
 ```python
+# Requires: pip install vllm  +  CUDA GPU
+
 quickapi.setup(
-    model="mistral-7b",              # Larger, more accurate
-    inference_backend="vllm",        # GPU acceleration
+    "vllm",
+    model="mistralai/Mistral-7B-Instruct-v0.2",  # HuggingFace model ID
+    temperature=0.7,
+    max_tokens=2048
 )
 ```
+✅ 5-10× faster than Ollama on GPU  
+✅ Best for: large-scale dataset generation, distillation jobs  
+⚠️ Requires CUDA GPU + `pip install vllm`
 
-### Local-Only (No Auth)
+### 🔄 Auto-detection
 ```python
-quickapi.setup(
-    model="granite",                 # Use with Ollama
-    inference_backend="ollama"
-)
-# Must run: ollama serve
+quickapi.setup("auto")  # tries Ollama first, falls back to vLLM
 ```
 
 ---
@@ -235,8 +269,11 @@ quickapi.setup(
 | 🎯 **3-line functions** | No boilerplate, no complexity |
 | 🔒 **All pre-configured** | Works out-of-box with sensible defaults |
 | 📊 **Quality metrics** | See exactly what your data looks like |
-| 💾 **Multiple formats** | Export to Alpaca, ChatML, ShareGPT |
-| 🚀 **End-to-end** | PDF → tokens in one script |
+| 💾 **Multiple formats** | Export to Alpaca, ChatML, ShareGPT, DPO |
+| 🧬 **Distillation** | Generate synthetic datasets from any seed prompts |
+| 🦙 **Ollama support** | Local, CPU-friendly, no GPU required |
+| ⚡ **vLLM support** | GPU-accelerated, high-throughput generation |
+| 🚀 **End-to-end** | PDF → dataset in one script |
 | 📱 **Offline capable** | Works without internet (with Ollama) |
 | ⚡ **Production-ready** | Error handling, logging, validation |
 

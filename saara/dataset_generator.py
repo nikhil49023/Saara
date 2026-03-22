@@ -453,7 +453,7 @@ class ShareGPTFormatGenerator:
     Delegates to formats.ShareGPTFormat for actual conversion.
     """
 
-    SYSTEM_PROMPT = "You are AyurGuru, an expert AI Ayurvedic doctor. Answer queries using authentic Samhita knowledge."
+    SYSTEM_PROMPT = "You are a knowledgeable and helpful AI assistant. Provide accurate, well-reasoned responses based on the information you have."
 
     @staticmethod
     def convert(data: List[Dict], system_prompt: str = None) -> List[Dict]:

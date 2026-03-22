@@ -132,7 +132,11 @@ class DataLabeler:
         
         result = self.client.generate_json(
             prompt=prompt,
-            system_prompt="You are a document classification expert."
+            system_prompt=(
+                "You are an expert document archivist and content analyst specializing in categorizing diverse document types. "
+                "Analyze structure, vocabulary, and intent to accurately classify the document. "
+                "Output must be valid JSON only."
+            )
         )
         
         if 'error' in result:
@@ -147,7 +151,11 @@ class DataLabeler:
         
         result = self.client.generate_json(
             prompt=prompt,
-            system_prompt="You are an expert at identifying topics and themes in documents."
+            system_prompt=(
+                "You are a subject matter analyst skilled at identifying the core topics, themes, and terminology in any domain. "
+                "Extract specific, meaningful topics — not vague generalities. "
+                "Output must be valid JSON only."
+            )
         )
         
         if 'error' in result:
@@ -201,7 +209,12 @@ class DataLabeler:
         
         result = self.client.generate_json(
             prompt=prompt,
-            system_prompt="You are a data quality assessor for ML training data."
+            system_prompt=(
+                "You are a rigorous quality gatekeeper for LLM training datasets. "
+                "Your goal is to admit only high-quality, informative, coherent text and reject garbage, boilerplate, OCR artifacts, and near-empty content. "
+                "Be strict — it is better to reject marginal content than to pollute the training set. "
+                "Output must be valid JSON only."
+            )
         )
         
         if 'error' in result:
@@ -238,7 +251,11 @@ class DataLabeler:
         
         result = self.client.generate_json(
             prompt=prompt,
-            system_prompt="You are an expert summarizer."
+            system_prompt=(
+                "You are a precise summarization expert who condenses content faithfully without inventing or omitting key facts. "
+                "Summaries must be grounded in the source — no hallucinations, no extrapolations. "
+                "Output must be valid JSON only."
+            )
         )
         
         if 'error' in result:
@@ -252,7 +269,11 @@ class DataLabeler:
         
         result = self.client.generate_json(
             prompt=prompt,
-            system_prompt="You are a named entity recognition expert."
+            system_prompt=(
+                "You are an expert in Named Entity Recognition (NER) across all domains. "
+                "Identify every significant named entity in the text and provide precise type labels and contextual descriptions. "
+                "Output must be valid JSON only."
+            )
         )
         
         if 'error' in result:
@@ -269,7 +290,14 @@ class DataLabeler:
             
             result = self.client.generate_json(
                 prompt=prompt,
-                system_prompt="You are an expert at creating instruction-following training data."
+                system_prompt=(
+                    "You are an expert LLM fine-tuning data engineer specializing in instruction-following datasets. "
+                    "Generate natural, self-contained instructions and thorough, expert responses. "
+                    "Hard rules: NEVER reference 'the text' or 'the document'. "
+                    "NEVER start responses with 'I' or 'As an AI'. "
+                    "Minimum response length: 30 words. "
+                    "Output must be valid JSON only."
+                )
             )
             
             if 'error' not in result:

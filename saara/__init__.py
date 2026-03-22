@@ -23,7 +23,6 @@ from .config import (
     EvaluatorConfig,
     DeployerConfig,
     RAGConfig,
-    PretrainConfig,
     convert_config,
 )
 from .exceptions import (
@@ -40,22 +39,7 @@ from .exceptions import (
 
 # Lazy imports for optional heavy dependencies
 def __getattr__(name):
-    """Lazy import for heavy dependencies."""
-
-    # Training module (requires torch)
-    if name == "LLMTrainer":
-        from .train import LLMTrainer
-        return LLMTrainer
-
-    # Evaluator (requires torch)
-    if name == "ModelEvaluator":
-        from .evaluator import ModelEvaluator
-        return ModelEvaluator
-
-    # Deployer (may require torch)
-    if name == "ModelDeployer":
-        from .deployer import ModelDeployer
-        return ModelDeployer
+    """Lazy import for optional dependencies."""
 
     # Pipeline (requires ollama, pdfplumber)
     if name == "DataPipeline":
@@ -93,54 +77,6 @@ def __getattr__(name):
     if name == "QualityJudge":
         from .synthetic_generator import QualityJudge
         return QualityJudge
-
-    # Accelerator
-    if name == "NeuralAccelerator":
-        from .accelerator import NeuralAccelerator
-        return NeuralAccelerator
-
-    if name == "create_accelerator":
-        from .accelerator import create_accelerator
-        return create_accelerator
-
-    # Visualizer
-    if name == "TrainingDashboard":
-        from .visualizer import TrainingDashboard
-        return TrainingDashboard
-
-    if name == "ModelAnalyzer":
-        from .visualizer import ModelAnalyzer
-        return ModelAnalyzer
-
-    if name == "create_visualizer":
-        from .visualizer import create_visualizer
-        return create_visualizer
-
-    # Cloud Runtime
-    if name == "CloudRuntime":
-        from .cloud_runtime import CloudRuntime
-        return CloudRuntime
-
-    if name == "setup_colab":
-        from .cloud_runtime import setup_colab
-        return setup_colab
-
-    if name == "is_cloud_environment":
-        from .cloud_runtime import is_cloud_environment
-        return is_cloud_environment
-
-    # Training Pipeline (Modular)
-    if name == "TrainingPipeline":
-        from .training_pipeline import TrainingPipeline
-        return TrainingPipeline
-
-    if name == "TrainingPipelineConfig":
-        from .training_pipeline import TrainingPipelineConfig
-        return TrainingPipelineConfig
-
-    if name == "quick_train":
-        from .training_pipeline import quick_train
-        return quick_train
 
     # RAG Engine
     if name == "RAGEngine":
@@ -276,13 +212,12 @@ def __getattr__(name):
 
 
 __all__ = [
-    # Config classes
+    # Config classes (data-pipeline scope)
     "TrainConfig",
     "PipelineConfig",
     "EvaluatorConfig",
     "DeployerConfig",
     "RAGConfig",
-    "PretrainConfig",
     "convert_config",
     # Exception classes
     "SaaraException",
@@ -294,7 +229,7 @@ __all__ = [
     "DeploymentError",
     "PDFExtractionError",
     "DatasetGenerationError",
-    # Core Pipeline
+    # Core Data Pipeline
     "DataPipeline",
     "PipelineResult",
     "DatasetGenerator",
@@ -306,34 +241,16 @@ __all__ = [
     "SyntheticDataGenerator",
     "DataType",
     "QualityJudge",
-    # Training & Evaluation
-    "LLMTrainer",
-    "ModelEvaluator",
-    "ModelDeployer",
-    # Accelerator & Visualizer
-    "NeuralAccelerator",
-    "create_accelerator",
-    "TrainingDashboard",
-    "ModelAnalyzer",
-    "create_visualizer",
-    # Cloud Runtime
-    "CloudRuntime",
-    "setup_colab",
-    "is_cloud_environment",
-    # Modular Training
-    "TrainingPipeline",
-    "TrainingPipelineConfig",
-    "quick_train",
     # RAG Engine
     "RAGEngine",
     "RAGManager",
     "create_rag_engine",
     "quick_rag",
-    # LLM Providers (unified API)
+    # LLM Providers (used for data labeling/generation)
     "UnifiedLLM",
     "create_llm",
     "quick_generate",
-    # Dataset Formats (NEW)
+    # Dataset Formats
     "FormatRegistry",
     "FormatType",
     "FormatConfig",
@@ -352,10 +269,13 @@ __all__ = [
     "save_jsonl",
     "extract_texts",
     "split_dataset",
-    # Quickstart
+    # Quickstart wrappers
     "QuickLLM",
     "QuickDataset",
     "QuickFineTune",
     "ollama_local",
     "vllm_local",
+    # Distillation / Synthetic Generation
+    "dataGenerate_Distillation",
+    "synthesize",
 ]

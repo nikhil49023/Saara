@@ -56,86 +56,88 @@ class SyntheticDataGenerator:
     Implements multi-type generation and quality filtering.
     """
     
-    # Prompts for different data types
     PROMPTS = {
-        DataType.FACTUAL: """Based on the following document section, generate {count} factual question-answer pairs.
+        DataType.FACTUAL: """Based on the following document section, generate {count} factual question-answer pairs for LLM fine-tuning.
 
 RULES:
-- Questions should ask for specific facts, definitions, or data points
-- Answers must be directly supported by the text
-- DO NOT use phrases like "according to the text" or "the document states"
-- Questions should sound natural, as if asked by a curious user
-- Answers should be complete but concise
+- Each pair must target a SINGLE, SPECIFIC fact, definition, statistic, or data point.
+- If the text contains 10 separate facts, generate 10 separate pairs — do not merge them.
+- Questions must be self-contained: always name the specific subject, never use 'it', 'they', 'this'.
+- Answers must be directly supported by the source. Do NOT infer, extrapolate, or add information.
+- NEVER use phrases like 'according to the text', 'the document states', 'as mentioned' — write as established knowledge.
+- Questions must sound natural, as if asked by a curious, informed user.
+- Answers should be complete but concise (20-120 words).
 
 DOCUMENT SECTION:
 {text}
 
-Generate exactly {count} pairs in this JSON format:
+Generate exactly {count} pairs. Output ONLY valid JSON array, no markdown:
 [
-  {{"instruction": "question here", "input": "", "output": "answer here"}},
-  ...
+  {{"instruction": "<specific factual question>", "input": "", "output": "<grounded factual answer>"}}
 ]
 
-JSON OUTPUT:""",
+JSON:""",
 
-        DataType.REASONING: """Based on the following document section, generate {count} reasoning question-answer pairs.
+        DataType.REASONING: """Based on the following document section, generate {count} reasoning question-answer pairs for LLM fine-tuning.
 
 RULES:
-- Questions should require logical thinking, analysis, or inference
-- Use "why", "how", "what would happen if", "explain the relationship"
-- Answers should show step-by-step reasoning
-- DO NOT reference "the text" or "the document" - just answer naturally
-- Answers should demonstrate deep understanding
+- Questions must require logical thinking, analysis, cause-and-effect reasoning, or inference.
+- Use 'Why', 'How', 'What causes', 'What would happen if', 'Explain the relationship between'.
+- Answers must show step-by-step reasoning grounded in the source — not just restating facts.
+- Questions must be self-contained — name specific subjects, not 'it' or 'this'.
+- NEVER reference 'the text' or 'the document' in either question or answer.
+- Answers should demonstrate genuine understanding (40-200 words).
+- NEVER start answers with 'I' or 'As an AI'.
 
 DOCUMENT SECTION:
 {text}
 
-Generate exactly {count} pairs in this JSON format:
+Generate exactly {count} pairs. Output ONLY valid JSON array, no markdown:
 [
-  {{"instruction": "reasoning question", "input": "", "output": "detailed reasoning answer"}},
-  ...
+  {{"instruction": "<reasoning question>", "input": "", "output": "<step-by-step reasoned answer>"}}
 ]
 
-JSON OUTPUT:""",
+JSON:""",
 
-        DataType.CONVERSATIONAL: """Based on the following document section, generate {count} conversational scenarios.
+        DataType.CONVERSATIONAL: """Based on the following document section, generate {count} conversational instruction-response pairs for LLM fine-tuning.
 
 RULES:
-- Frame as a user with a practical problem or question
-- Example: "I'm trying to understand X..." or "I need help with Y..."
-- Responses should be helpful, practical, and conversational
-- DO NOT sound like a textbook - sound like a knowledgeable assistant
-- Include context when helpful
+- Frame as a user who has a real, practical question or problem they want help with.
+- Examples: 'I need to understand...', 'Can you help me figure out...', 'I'm confused about...'.
+- Responses must sound like a warm, knowledgeable expert — NOT a textbook or a robot.
+- Do NOT say 'the text says' or 'according to the passage'. Just answer naturally.
+- Responses should be conversational yet accurate (30-150 words).
+- NEVER start responses with 'I' as the first word, or 'As an AI'.
 
 DOCUMENT SECTION:
 {text}
 
-Generate exactly {count} pairs in this JSON format:
+Generate exactly {count} pairs. Output ONLY valid JSON array, no markdown:
 [
-  {{"instruction": "user's conversational question/problem", "input": "", "output": "helpful assistant response"}},
-  ...
+  {{"instruction": "<natural conversational request>", "input": "", "output": "<helpful, natural response>"}}
 ]
 
-JSON OUTPUT:""",
+JSON:""",
 
-        DataType.INSTRUCTION: """Based on the following document section, generate {count} instruction-following pairs.
+        DataType.INSTRUCTION: """Based on the following document section, generate {count} task-based instruction-following pairs for LLM fine-tuning.
 
 RULES:
-- Frame as tasks the user wants to accomplish
-- Example: "Summarize...", "List the steps to...", "Compare X and Y..."
-- Responses should complete the task accurately
-- Be specific and actionable
+- Frame as concrete tasks the user wants to accomplish.
+- Use action verbs: 'Summarize', 'List the steps', 'Compare', 'Explain', 'Describe how to', 'Analyze'.
+- Responses must COMPLETE the task accurately and thoroughly — not just describe how they would.
+- Be specific and actionable. Responses should demonstrate real competence.
+- NEVER reference the source in either instruction or response.
+- Minimum response length: 40 words.
 
 DOCUMENT SECTION:
 {text}
 
-Generate exactly {count} pairs in this JSON format:
+Generate exactly {count} pairs. Output ONLY valid JSON array, no markdown:
 [
-  {{"instruction": "task instruction", "input": "", "output": "completed task response"}},
-  ...
+  {{"instruction": "<specific task instruction>", "input": "", "output": "<complete, accurate task response>"}}
 ]
 
-JSON OUTPUT:"""
+JSON:"""
     }
     
     # Quality filter patterns
@@ -220,7 +222,15 @@ JSON OUTPUT:"""
         
         response = self.client.generate(
             prompt=prompt,
-            system_prompt="You are an expert at creating high-quality training data for AI models. Output valid JSON only."
+            system_prompt=(
+                "You are a specialist in creating high-quality supervised fine-tuning datasets for large language models. "
+                "Your output will be used directly for training — quality and accuracy are critical. "
+                "Hard rules: NEVER reference 'the text', 'the document', or 'the passage' in any output. "
+                "NEVER use 'according to', 'as mentioned', or 'as stated'. "
+                "NEVER start responses with 'I' or 'As an AI'. "
+                "NEVER hallucinate, infer, or add information not present in the source. "
+                "Output ONLY valid JSON arrays — no markdown, no explanation, no preamble."
+            )
         )
         
         if not response.success:
@@ -369,21 +379,26 @@ class QualityJudge:
     Evaluates samples on multiple criteria.
     """
     
-    JUDGE_PROMPT = """You are a quality control judge for AI training data.
+    JUDGE_PROMPT = """You are a strict quality judge for LLM supervised fine-tuning data. Your ratings directly determine which samples are used for training — be rigorous.
 
-Evaluate the following instruction-response pair on these criteria:
-1. RELEVANCE (1-10): Does the response actually answer the instruction?
-2. ACCURACY (1-10): Is the information factually correct?
-3. NATURALNESS (1-10): Does it sound like a real conversation?
-4. COMPLETENESS (1-10): Is the response thorough enough?
+Evaluate the following instruction-response pair on these 5 criteria:
+1. RELEVANCE (1-10): Does the response directly and completely address the instruction?
+2. ACCURACY (1-10): Is the information factually correct and grounded? No hallucinations?
+3. NATURALNESS (1-10): Does it read like a genuine, fluent expert response — not a textbook or a robot?
+4. COMPLETENESS (1-10): Is the response thorough — covers all aspects the instruction asks for?
+5. TRAINING_UTILITY (1-10): Would an LLM actually become more capable by learning this pair?
+
+AUTOMATIC FAIL (set passed=false regardless of scores):
+- Response contains 'according to the text', 'the document states', 'as mentioned', or similar source references.
+- Response starts with 'I ' or 'As an AI'.
+- Response is under 15 words.
+- Instruction is vague, placeholder, or uses 'it'/'this' without naming a subject.
 
 INSTRUCTION: {instruction}
 RESPONSE: {response}
 
-Provide your evaluation as JSON:
-{{"relevance": X, "accuracy": X, "naturalness": X, "completeness": X, "average": X, "passed": true/false, "issues": ["issue1", ...]}}
-
-Only mark passed=false if average < 6 or if there are critical issues.
+Provide evaluation as JSON:
+{{"relevance": <1-10>, "accuracy": <1-10>, "naturalness": <1-10>, "completeness": <1-10>, "training_utility": <1-10>, "average": <mean of 5 scores, 1 decimal>, "passed": <true if average >= 6.5 AND no automatic fail, else false>, "issues": ["<issue>", ...]}}
 
 JSON:"""
     

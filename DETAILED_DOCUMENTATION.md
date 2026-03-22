@@ -2,7 +2,7 @@
 
 ## Complete Module, API, and Usage Reference
 
-Version scope: SAARA 1.6.x  
+Version scope: SAARA 1.7.x  
 Audience: Developers building data pipelines, fine-tuning workflows, and RAG applications with SAARA.
 
 ---
@@ -37,12 +37,13 @@ SAARA is a modular framework for:
 
 It exposes a high-level public API via saara package imports and lazily loads heavyweight modules where possible.
 
-### Release Notes (1.6.7)
+### Release Notes (1.7.0)
 
 - Simplified inference surface to local-only providers.
 - Unified local provider modes are now: `auto`, `vllm`, and `ollama`.
 - Removed cloud API quick helpers from the top-level quickstart interface.
 - Updated docs to reflect local-first usage and dependencies.
+- Archived experimental tokenizer and token-storage modules (`tokenizers.py`, `token_storage.py`); use `TrainingPipeline` / `quick_train` for modular training instead.
 
 ---
 
@@ -90,7 +91,7 @@ config = PipelineConfig(
     use_ocr=True,
 )
 
-pipeline = DataPipeline(config)
+pipeline = DataPipeline(config.to_dict())
 result = pipeline.process_file("sample.pdf", dataset_name="demo")
 
 print("success:", result.success)
@@ -114,7 +115,7 @@ print(llm.generate("Summarize this framework in 3 bullets."))
 |---|---|---|
 | Config and Contracts | Type-safe configuration and errors | saara/config.py, saara/exceptions.py, saara/protocols.py |
 | Ingestion and Processing | Extract, clean, chunk, label, generate datasets | saara/pdf_extractor.py, saara/cleaner.py, saara/chunker.py, saara/labeler.py, saara/dataset_generator.py |
-| Training Stack | Fine-tuning, modular training pipeline, token reuse | saara/train.py, saara/training_pipeline.py, saara/token_storage.py |
+| Training Stack | Fine-tuning, modular training pipeline | saara/train.py, saara/training_pipeline.py |
 | Inference and RAG | Querying and retrieval-augmented generation | saara/rag_engine.py, saara/llm_providers.py |
 | Runtime and Utilities | Cloud setup, acceleration, visualization, file utilities | saara/cloud_runtime.py, saara/accelerator.py, saara/visualizer.py, saara/file_utils.py, saara/quickstart.py |
 
@@ -187,15 +188,10 @@ These are importable directly from saara.
 | setup_colab | function | Colab environment setup |
 | is_cloud_environment | function | Cloud environment detection |
 
-### 5.6 Tokenization and Modular Training APIs
+### 5.6 Modular Training APIs
 
 | Symbol | Type | Description |
 |---|---|---|
-| AIEnhancedTokenizer | class | AI-assisted tokenization |
-| create_ai_tokenizer | function | AI tokenizer factory |
-| TokenStorage | class | Persist tokenized dataset |
-| TokenStorageConfig | dataclass | Token storage settings |
-| quick_tokenize | function | Fast tokenization shortcut |
 | TrainingPipeline | class | Stage-based modular training |
 | TrainingPipelineConfig | dataclass | Training pipeline settings |
 | quick_train | function | Fast modular training shortcut |
@@ -217,15 +213,7 @@ These are importable directly from saara.
 | create_llm | function | Unified client factory |
 | quick_generate | function | One-line generation helper |
 
-### 5.9 Flexible Tokenizer APIs
 
-| Symbol | Type | Description |
-|---|---|---|
-| create_tokenizer | function | Tokenizer factory |
-| TokenizerRegistry | class | Register/create tokenizer implementations |
-| BPETokenizer | class | BPE tokenizer |
-| WordPieceTokenizer | class | WordPiece tokenizer |
-| ByteTokenizer | class | Byte-level tokenizer |
 
 ### 5.10 File Utility APIs
 
@@ -243,7 +231,6 @@ These are importable directly from saara.
 | Symbol | Type | Description |
 |---|---|---|
 | QuickLLM | class | Simplified LLM wrapper |
-| QuickTokenizer | class | Simplified tokenizer wrapper |
 | QuickDataset | class | Simplified dataset wrapper |
 | QuickFineTune | class | Simplified fine-tune wrapper |
 | ollama_local | function | Quick local Ollama client |
@@ -273,10 +260,8 @@ These are importable directly from saara.
 | saara/deployer.py | Deployment/export tooling | Package and deploy artifacts |
 | saara/model_manager.py | Model lifecycle handling | Manage model paths/artifacts |
 | saara/rag_engine.py | RAG orchestration | Retrieval-based QA apps |
-| saara/token_storage.py | Reusable token storage | Faster iterative training |
 | saara/training_pipeline.py | Stage-based training | Modular training execution |
 | saara/llm_providers.py | Multi-provider LLM abstraction | Provider-agnostic inference |
-| saara/tokenizers.py | Tokenizer implementations/registry | Custom tokenization setup |
 | saara/file_utils.py | Manual IO utilities | Controlled dataset IO |
 | saara/quickstart.py | Beginner-friendly wrappers | Fast prototyping |
 | saara/cloud_runtime.py | Cloud-specific setup | Colab/Kaggle workflows |
@@ -309,7 +294,7 @@ config = PipelineConfig(
     chunk_overlap=200,
 )
 
-pipeline = DataPipeline(config)
+pipeline = DataPipeline(config.to_dict())
 result = pipeline.process_directory("./pdfs", dataset_name="my_corpus")
 
 if result.success:
@@ -320,16 +305,13 @@ else:
     print("errors:", result.errors)
 ```
 
-### 7.2 Tokenize once, train many times
+### 7.2 Modular training pipeline
 
 ```python
-from saara import quick_tokenize, quick_train
+from saara import quick_train
 
-# Stage 1: pre-tokenize data
-store_path = quick_tokenize("train.jsonl", "./token_store")
-
-# Stage 2: train using token store
-run_info = quick_train(store_path, output_dir="./models/run_01")
+# Run a stage-based training job
+run_info = quick_train("train.jsonl", output_dir="./models/run_01")
 print(run_info)
 ```
 
@@ -379,16 +361,14 @@ print("splits:", len(train), len(val), len(test))
 ### 7.6 Quickstart-first development pattern
 
 ```python
-from saara import QuickLLM, QuickTokenizer, QuickDataset
+from saara import QuickLLM, QuickDataset
 
 llm = QuickLLM("ollama", model="granite4")
-tok = QuickTokenizer("bpe", vocab_size=32000)
 ds = QuickDataset.from_file("input.jsonl")
 
 texts = ds.get_texts("text")
-tok.train(texts[:1000])
 
-print(llm.generate("Summarize tokenization strategy in one paragraph."))
+print(llm.generate("Summarize the dataset in one paragraph."))
 ```
 
 ---
@@ -470,7 +450,6 @@ Install only what your workflow needs to keep environments lightweight.
 | One-line generation | quick_generate |
 | Local model access | ollama_local |
 | Build unified client | create_llm |
-| Fast tokenization | quick_tokenize |
 | Stage-based training | quick_train |
 | Quick RAG setup | quick_rag |
 | Auto-load files | load_from_file |

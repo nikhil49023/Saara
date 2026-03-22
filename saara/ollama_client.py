@@ -266,26 +266,30 @@ class OllamaClient:
 
 
 class PromptTemplates:
-    """Pre-defined prompt templates for common tasks."""
-    
+    """Pre-defined prompt templates for common data labeling and analysis tasks."""
+
     CLASSIFY_DOCUMENT = """Analyze the following document excerpt and classify it.
 
 Document:
 {text}
 
 Classify into one of these categories:
-- research_paper: Academic research papers with methodology, results, citations
-- textbook: Educational content with explanations and examples
-- technical_documentation: Technical guides, API docs, manuals
-- tutorial: Step-by-step guides and how-to content
-- reference_material: Reference docs, specifications, standards
-- general_knowledge: General informational content
+- research_paper: Academic research with methodology, results, citations
+- textbook: Educational content with structured explanations and examples
+- technical_documentation: Technical guides, API docs, system manuals
+- tutorial: Step-by-step how-to guides and walkthroughs
+- reference_material: Reference specifications, standards, lookup tables
+- medical_clinical: Clinical guidelines, medical literature, health protocols
+- legal: Legal documents, contracts, regulations, compliance material
+- financial: Financial reports, economic analysis, investment material
+- scientific: Scientific papers, lab reports, experimental data
+- general_knowledge: General informational or encyclopedic content
 
 Respond with JSON:
 {{
     "category": "<category>",
     "confidence": <0.0-1.0>,
-    "reasoning": "<brief explanation>"
+    "reasoning": "<one sentence explanation>"
 }}"""
 
     EXTRACT_TOPICS = """Extract the main topics and concepts from this text.
@@ -295,47 +299,47 @@ Text:
 
 Respond with JSON:
 {{
-    "main_topic": "<primary topic>",
-    "subtopics": ["<topic1>", "<topic2>", ...],
-    "keywords": ["<keyword1>", "<keyword2>", ...],
+    "main_topic": "<primary topic in 3-5 words>",
+    "subtopics": ["<topic1>", "<topic2>", "<topic3>"],
+    "keywords": ["<keyword1>", "<keyword2>", "<keyword3>", "<keyword4>", "<keyword5>"],
     "domain": "<field/domain>",
     "complexity_level": "<basic|intermediate|advanced|expert>"
 }}"""
 
-    GENERATE_QA = """You are an expert Ayurvedic Data Analyst.
-Read the following text chunk from an Ayurveda textbook.
-Your goal is to extract EVERY valid piece of medical information into Q&A pairs.
+    GENERATE_QA = """You are a rigorous training data specialist. Your task is to extract every distinct, verifiable fact from the text below into well-formed question-answer pairs for LLM fine-tuning.
 
-Rules:
-1. Don't summarize. If the text lists 10 herbs, create 10 separate Q&A pairs.
-2. Structure:
-   - Q: What is the effect of [Herb Name] on [Disease/Dosha]?
-   - A: [Herb Name] acts as... (Cite the text directly).
-3. Context: If the text says "It cures fever," replace "It" with the actual herb name from the previous sentences.
+STRICT RULES:
+1. Extract EVERY separate fact — do not merge or summarize multiple facts into one pair.
+2. Questions must be self-contained: do not use vague pronouns like "it", "they", "this" — always name the specific subject.
+3. Answers must be factually grounded in the source text. Do not add, infer, or hallucinate information.
+4. NEVER use phrases like "according to the text", "the document states", "as mentioned above" — write as if the answer is simply known.
+5. Questions should sound natural, as if asked by a knowledgeable user seeking information.
+6. Answers should be complete but concise — no unnecessary filler or hedging.
+7. Output ONLY valid JSON — no markdown, no commentary.
 
-Text:
+TEXT:
 {text}
 
-Output format: JSON List of objects:
+Output format — JSON array:
 [
    {{"question": "...", "answer": "..."}},
-   ...
+   {{"question": "...", "answer": "..."}}
 ]"""
 
-    SUMMARIZE = """Summarize the following text concisely while retaining key information.
+    SUMMARIZE = """Summarize the following text faithfully and concisely. Preserve all key facts without adding, inferring, or hallucinating information that is not present in the source.
 
 Text:
 {text}
 
 Respond with JSON:
 {{
-    "summary": "<concise summary>",
-    "key_points": ["<point1>", "<point2>", ...],
-    "word_count": <original word count>,
-    "compression_ratio": <summary words / original words>
+    "summary": "<concise, faithful summary — no invented facts>",
+    "key_points": ["<point1>", "<point2>", "<point3>"],
+    "word_count": <original approximate word count>,
+    "compression_ratio": <summary word count divided by original, as a decimal>
 }}"""
 
-    EXTRACT_ENTITIES = """Extract named entities from the following text.
+    EXTRACT_ENTITIES = """Extract all named entities from the following text with careful attention to context.
 
 Text:
 {text}
@@ -343,37 +347,66 @@ Text:
 Respond with JSON:
 {{
     "entities": [
-        {{"text": "<entity>", "type": "<PERSON|ORG|LOCATION|DATE|CONCEPT|TECHNOLOGY|OTHER>", "context": "<brief context>"}}
+        {{"text": "<entity>", "type": "<PERSON|ORGANIZATION|LOCATION|DATE|CONCEPT|TECHNOLOGY|PRODUCT|EVENT|OTHER>", "context": "<one sentence describing how this entity appears in the text>"}}
     ]
 }}"""
 
-    CREATE_INSTRUCTION = """Transform the following content into an instruction-following format for training.
+    CREATE_INSTRUCTION = """You are an expert LLM fine-tuning data engineer. Generate a single, high-quality instruction-response pair from the content below, suitable for supervised fine-tuning.
 
 Content:
 {text}
 
-Create an instruction and response pair where:
-- The instruction asks about or requests something related to the content
-- The response provides accurate information based on the content
+Choose the most natural instruction type for this content:
+- EXPLANATION: "Explain ...", "Describe how ...", "What is ..."
+- PROCEDURE: "List the steps to ...", "How do you ...", "Walk me through ..."
+- COMPARISON: "Compare X and Y ...", "What is the difference between ..."
+- APPLICATION: "Give an example of ...", "How would you apply ..."
+- ANALYSIS: "Why does ...", "What are the implications of ..."
+
+Rules:
+- The instruction must be self-contained — no references to 'the text' or 'the passage'.
+- The response must be accurate, detailed, and directly address the instruction using information from the content.
+- The response should demonstrate understanding, not just copy the source.
+- Minimum response length: 30 words.
+- NEVER start responses with 'I' or 'As an AI'.
 
 Respond with JSON:
 {{
-    "instruction": "<user instruction/question>",
-    "response": "<helpful response based on content>",
-    "category": "<category of instruction>"
+    "instruction": "<natural user instruction>",
+    "response": "<thorough, accurate response>",
+    "category": "<explanation|procedure|comparison|application|analysis>"
 }}"""
 
-    ASSESS_QUALITY = """Assess the quality of this text for training data.
+    ASSESS_QUALITY = """You are a quality gatekeeper for LLM training data. Evaluate the text below across 6 dimensions and decide whether it is suitable for inclusion in a training dataset.
 
 Text:
 {text}
 
-Evaluate and respond with JSON:
+Scoring dimensions (1-10 each):
+1. INFORMATIVENESS: Does it convey meaningful, substantive information?
+2. FACTUAL_COHERENCE: Is the content internally consistent and non-contradictory?
+3. SPECIFICITY: Does it contain concrete details rather than vague generalities?
+4. LANGUAGE_QUALITY: Is it grammatically sound and clearly written?
+5. TRAINING_UTILITY: Would an AI model learn something useful from this text?
+6. NOISE_FREEDOM: Is it free from OCR errors, formatting artifacts, or garbled content?
+
+Mark is_suitable=false if ANY of the following is true:
+- average score < 5.0
+- noise_freedom < 4 (heavily corrupted text)
+- language_quality < 3 (unintelligible)
+
+Respond with JSON:
 {{
-    "quality_score": <1-10>,
-    "issues": ["<issue1>", ...],
+    "informativeness": <1-10>,
+    "factual_coherence": <1-10>,
+    "specificity": <1-10>,
+    "language_quality": <1-10>,
+    "training_utility": <1-10>,
+    "noise_freedom": <1-10>,
+    "quality_score": <average of all 6, rounded to 1 decimal>,
+    "issues": ["<issue1>"],
     "is_suitable": <true|false>,
-    "language": "<detected language>",
+    "language": "<detected language code, e.g. en>",
     "contains_code": <true|false>,
     "contains_math": <true|false>,
     "readability": "<easy|medium|hard>"

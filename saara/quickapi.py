@@ -567,6 +567,232 @@ def convert_existing(
 
 
 # ============================================================================
+# Feature 5: Model Distillation Dataset Generation
+# ============================================================================
+
+def dataGenerate_Distillation(
+    seed_prompts: Union[List[str], str],
+    format: str = "alpaca",
+    responses_per_prompt: int = 1,
+    diversity_mode: bool = True,
+    system_prompt: str = "",
+    save_output: bool = True
+) -> Dict[str, Any]:
+    """
+    Generate a model distillation dataset by running seed prompts through
+    the configured model (acting as the teacher) and collecting its responses.
+
+    This is used to distill knowledge from a large teacher model into training
+    data for fine-tuning a smaller student model.
+
+    Args:
+        seed_prompts: List of instruction strings, OR path to a .txt/.jsonl file
+                      containing one prompt per line (txt) or {"instruction": ...} per line (jsonl)
+        format: Output format — "alpaca", "chatml", "sharegpt", "completion", "dpo"
+        responses_per_prompt: How many responses to generate per prompt (for diversity/DPO)
+        diversity_mode: If True, varies temperature slightly per response for diversity
+        system_prompt: System prompt to include with each generation
+        save_output: Save the dataset to output_dir
+
+    Returns:
+        Dict with keys:
+            - "total_prompts": int
+            - "total_samples": int
+            - "format": str
+            - "items": List[Dict]
+            - "output_file": str or None
+
+    Example (Ollama):
+        >>> from saara import quickapi
+        >>> quickapi.setup("ollama", model="granite3.1-dense:8b")
+        >>> result = quickapi.dataGenerate_Distillation(
+        ...     ["Explain gradient descent", "What is attention in transformers?"],
+        ...     format="alpaca"
+        ... )
+        >>> print(result["total_samples"], "samples generated")
+
+    Example (vLLM):
+        >>> from saara import quickapi
+        >>> quickapi.setup("vllm", model="mistral")
+        >>> result = quickapi.dataGenerate_Distillation(
+        ...     "seed_prompts.txt",  # one prompt per line
+        ...     format="chatml",
+        ...     responses_per_prompt=3,
+        ...     diversity_mode=True,
+        ...     system_prompt="You are a helpful AI assistant."
+        ... )
+        >>> print(f"Generated {result['total_samples']} samples -> {result['output_file']}")
+
+    Example (DPO dataset with multiple responses):
+        >>> quickapi.setup("ollama", model="llama3")
+        >>> result = quickapi.dataGenerate_Distillation(
+        ...     seed_prompts=["Compare SQL vs NoSQL databases", "Explain REST API design"],
+        ...     format="dpo",
+        ...     responses_per_prompt=2  # generates chosen/rejected pairs for DPO
+        ... )
+
+    Raises:
+        SetupError: If setup() not called
+        ValidationError: If seed_prompts is empty or format is invalid
+        BackendError: If LLM backend is not available
+    """
+    _ensure_setup()
+    format = _validate_format(format)
+
+    if not _inference_engine:
+        raise BackendError(
+            "No inference engine available.\n"
+            f"  Backend: {_config.backend}\n"
+            f"  Error: {_config.error_message}"
+        )
+
+    # --- Load prompts ---
+    prompts: List[str] = []
+    if isinstance(seed_prompts, str):
+        path = _validate_file(seed_prompts, [".txt", ".jsonl", ".json"])
+        with open(path, "r", encoding="utf-8") as f:
+            if path.suffix.lower() in (".jsonl", ".json"):
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                        prompt = (
+                            obj.get("instruction") or
+                            obj.get("prompt") or
+                            obj.get("input") or
+                            obj.get("text") or ""
+                        )
+                        if prompt:
+                            prompts.append(prompt.strip())
+                    except json.JSONDecodeError:
+                        pass
+            else:  # .txt
+                prompts = [l.strip() for l in f if l.strip()]
+    elif isinstance(seed_prompts, list):
+        prompts = [str(p).strip() for p in seed_prompts if str(p).strip()]
+    else:
+        raise ValidationError("seed_prompts must be a list of strings or a file path (.txt/.jsonl)")
+
+    if not prompts:
+        raise ValidationError("No valid seed prompts found. Provide at least one non-empty prompt.")
+
+    # --- System prompt ---
+    sys_prompt = system_prompt or _config.system_prompt or (
+        "You are a knowledgeable, accurate, and helpful AI assistant. "
+        "Provide thorough, well-structured responses. "
+        "Never say 'As an AI' or refuse reasonable questions."
+    )
+
+    DISTILLATION_INSTRUCTION = (
+        "You are generating high-quality responses for an LLM training dataset (model distillation). "
+        "Your response will be used to train a student model. "
+        "Requirements: accurate, detailed, self-contained, and natural. "
+        "Never start with 'I' as the first word. Never say 'As an AI'. "
+        "Do not reference any document, context, or conversation history. "
+        "Simply answer the instruction directly and thoroughly."
+    )
+
+    # --- Generate ---
+    raw_samples: List[Dict] = []
+    total = len(prompts)
+
+    if _config.verbose:
+        print(f"  Generating distillation data: {total} prompts × {responses_per_prompt} response(s)")
+
+    for i, prompt in enumerate(prompts):
+        if _config.verbose:
+            pct = (i + 1) / total * 100
+            print(f"\r  Progress: {pct:.0f}% ({i+1}/{total})", end="", flush=True)
+
+        responses_for_prompt: List[str] = []
+        for r in range(responses_per_prompt):
+            # Vary temperature slightly for diversity when mode is on
+            temp_override = None
+            if diversity_mode and responses_per_prompt > 1:
+                import random
+                temp_override = min(1.0, max(0.1, _config.temperature + random.uniform(-0.15, 0.15)))
+
+            try:
+                full_system = f"{DISTILLATION_INSTRUCTION}\n\n{sys_prompt}".strip()
+                response_text = _inference_engine.generate(
+                    prompt=prompt,
+                    system_prompt=full_system,
+                    temperature=temp_override if temp_override is not None else _config.temperature,
+                    max_tokens=_config.max_tokens
+                )
+                if isinstance(response_text, str):
+                    content = response_text.strip()
+                elif hasattr(response_text, "content"):
+                    content = response_text.content.strip()
+                else:
+                    content = str(response_text).strip()
+
+                if content:
+                    responses_for_prompt.append(content)
+            except Exception:
+                pass  # Skip failed generations, continue
+
+        if not responses_for_prompt:
+            continue
+
+        # Build sample(s)
+        if format == "dpo" and len(responses_for_prompt) >= 2:
+            # For DPO: first response = chosen, second (shorter/lower temp) = rejected
+            # Sort by length: longer = more detailed = chosen
+            responses_for_prompt.sort(key=len, reverse=True)
+            raw_samples.append({
+                "instruction": prompt,
+                "input": "",
+                "output": responses_for_prompt[0],  # used as chosen in DPO
+                "rejected": responses_for_prompt[1],
+            })
+        else:
+            for resp in responses_for_prompt:
+                raw_samples.append({
+                    "instruction": prompt,
+                    "input": "",
+                    "output": resp,
+                })
+
+    if _config.verbose:
+        print()  # newline after progress
+
+    if not raw_samples:
+        raise SaaraError(
+            "No samples were generated. Check that the backend is running and responding.\n"
+            "  Run quickapi.check_backends() to diagnose."
+        )
+
+    # --- Convert to target format ---
+    from .formats import convert_dataset
+    sys_for_format = system_prompt or _config.system_prompt
+    converted = convert_dataset(raw_samples, format, system_prompt=sys_for_format)
+
+    output_data = {
+        "total_prompts": len(prompts),
+        "total_samples": len(converted),
+        "format": format,
+        "items": converted,
+        "output_file": None
+    }
+
+    if save_output and _config.initialized:
+        output_file = Path(_config.output_dir) / f"distillation_{format}.jsonl"
+        with open(output_file, "w", encoding="utf-8") as f:
+            for item in converted:
+                f.write(json.dumps(item, ensure_ascii=False) + "\n")
+        output_data["output_file"] = str(output_file)
+
+        if _config.verbose:
+            print(f"  Generated {len(converted)} distillation samples")
+            print(f"  Saved to: {output_file}")
+
+    return output_data
+
+
+# ============================================================================
 # Aliases for Simple API
 # ============================================================================
 
@@ -650,7 +876,33 @@ def convert(
     return dataConvert_Format(data, target_format=format, **kwargs)
 
 
-# ============================================================================
+def synthesize(
+    seed_prompts: Union[List[str], str],
+    format: str = "alpaca",
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Short alias for dataGenerate_Distillation().
+    Generates a model distillation dataset from seed prompts.
+
+    Args:
+        seed_prompts: List of instruction strings or path to .txt/.jsonl file
+        format: Output format (alpaca, chatml, sharegpt, completion, dpo)
+        **kwargs: Forwarded to dataGenerate_Distillation()
+
+    Example (Ollama):
+        >>> quickapi.setup("ollama", model="granite3.1-dense:8b")
+        >>> result = quickapi.synthesize(
+        ...     ["Explain backpropagation", "What is a transformer?"],
+        ...     format="alpaca"
+        ... )
+
+    Example (vLLM):
+        >>> quickapi.setup("vllm", model="mistral")
+        >>> result = quickapi.synthesize("prompts.txt", format="chatml", responses_per_prompt=3)
+    """
+    return dataGenerate_Distillation(seed_prompts, format=format, **kwargs)
+
 # Feature 1: PDF/Document Extraction
 # ============================================================================
 
@@ -830,8 +1082,16 @@ def dataLabel_Dataset(
         chunks = _chunk_text(text, chunk_size=512)
         labeled_items = []
 
-        system_prompt = """You are a data labeling expert. Generate high-quality instruction-response pairs
-from the provided text. Return ONLY valid JSON with fields: instruction, response"""
+        system_prompt = """You are a senior LLM fine-tuning data specialist. Your job is to generate high-quality, training-ready instruction-response pairs from source text.
+
+CORE RULES (non-negotiable):
+1. NEVER reference the source — do not say 'according to the text', 'the document states', 'as mentioned', 'in this passage', or any equivalent phrase.
+2. Instructions and responses must read as if the knowledge is simply known — write naturally, like a knowledgeable expert would.
+3. Instructions must be clear, self-contained, and specific — no vague pronouns ('it', 'this', 'they') without a named subject.
+4. Responses must be factually grounded in the source — do not hallucinate, invent, or over-generalize.
+5. NEVER start responses with 'I' or 'As an AI' — write directly and authoritatively.
+6. Minimum response length: 25 words. Short, trivial responses will be rejected.
+7. Output ONLY valid JSON — no markdown, no preamble, no explanation outside the JSON object."""
 
         total_chunks = len(chunks)
         for i, chunk in enumerate(chunks):
@@ -841,15 +1101,33 @@ from the provided text. Return ONLY valid JSON with fields: instruction, respons
 
             for label_type in label_types:
                 if label_type == "qa":
-                    prompt = f"""Generate a factual question-answer pair from this text:
-TEXT: {chunk[:500]}
+                    prompt = f"""Generate a factual question-answer pair from this text.
 
-Return JSON: {{"instruction": "question here", "response": "answer here"}}"""
+STRICT RULES:
+- The question must ask for a specific fact, definition, or data point present in the text.
+- The answer must be directly supported by the text — no inference, no additions.
+- Both question and answer must be self-contained: name specific subjects, avoid pronouns.
+- Do NOT reference the source text in either the question or answer.
+- Keep the answer concise but complete (min 20 words).
+
+TEXT:
+{chunk[:700]}
+
+Return JSON: {{"instruction": "<specific factual question>", "response": "<grounded factual answer>"}}"""
                 elif label_type == "instruction":
-                    prompt = f"""Generate an instruction-following pair from this text:
-TEXT: {chunk[:500]}
+                    prompt = f"""Generate a practical instruction-response pair from this text.
 
-Return JSON: {{"instruction": "instruction here", "response": "response here"}}"""
+STRICT RULES:
+- Frame the instruction as a task a user genuinely wants to accomplish (explain, list, compare, apply, analyze).
+- The response must demonstrate real understanding — not a copy-paste of the source.
+- Both instruction and response must stand alone: no references to 'the text' or 'the passage'.
+- NEVER begin responses with 'I' or 'As an AI'. Write as a knowledgeable expert.
+- Minimum response length: 30 words.
+
+TEXT:
+{chunk[:700]}
+
+Return JSON: {{"instruction": "<clear, actionable instruction>", "response": "<thorough, expert response>"}}"""
                 else:
                     continue
 

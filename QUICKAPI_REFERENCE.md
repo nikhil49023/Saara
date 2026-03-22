@@ -17,66 +17,69 @@
 
 ## Core Functions
 
-### `setup(model, inference_backend="auto", **kwargs)`
+### `setup(backend="ollama", model="mistral", **kwargs)`
 
-Initialize QuickAPI and load your language model.
+Initialize QuickAPI with a backend and language model.
 
 #### **Signature**
 ```python
 def setup(
-    model: str,
-    inference_backend: str = "auto",
-    cache_dir: str = None,
-    device: str = None,
+    backend: str = "ollama",
+    model: str = "mistral",
     temperature: float = 0.7,
-    **kwargs
-) -> None
+    max_tokens: int = 2048,
+    output_dir: str = "./saara_output",
+    system_prompt: str = "",
+    verbose: bool = True,
+    auto_check: bool = True
+) -> Dict[str, Any]
 ```
 
 #### **Parameters**
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `model` | `str` | **required** | Model name: `mistral`, `phi2`, `granite`, `llama2` |
-| `inference_backend` | `str` | `"auto"` | `"auto"` (best), `"vllm"` (GPU), `"ollama"` (local) |
-| `cache_dir` | `str` | `None` | Where to cache models (default: `~/.cache/saara`) |
-| `device` | `str` | `None` | `"cuda"`, `"cpu"`, or `"auto"` |
+| `backend` | `str` | `"ollama"` | Inference backend: `"ollama"` (recommended), `"vllm"` (faster), `"auto"` |
+| `model` | `str` | `"mistral"` | Model name, e.g. `"mistral"`, `"llama3"`, `"granite3.1-dense:8b"` |
 | `temperature` | `float` | `0.7` | Creativity level (0.0-1.0). Higher = more creative |
+| `max_tokens` | `int` | `2048` | Maximum response length |
+| `output_dir` | `str` | `"./saara_output"` | Where to save results |
+| `system_prompt` | `str` | `""` | Default system prompt |
+| `verbose` | `bool` | `True` | Print status messages |
+| `auto_check` | `bool` | `True` | Auto-check backend availability on setup |
+
+#### **Returns**
+
+A `dict` summarising the configuration: `{"status", "backend", "model", "output_dir", "formats"}`.
 
 #### **Examples**
 
 ```python
-# Simple setup
-quickapi.setup("mistral")
+# Minimal setup — uses Ollama with mistral
+quickapi.setup("ollama")
+
+# Specify model
+quickapi.setup("ollama", model="granite3.1-dense:8b")
 
 # GPU-accelerated with vLLM
-quickapi.setup("mistral", inference_backend="vllm")
+quickapi.setup("vllm", model="mistral")
 
-# Offline with Ollama (requires: ollama serve)
-quickapi.setup("granite", inference_backend="ollama")
-
-# Custom configuration
-quickapi.setup(
-    "phi2",
-    cache_dir="/data/models",
-    device="cuda",
-    temperature=0.5
-)
+# Auto-select best available backend
+quickapi.setup("auto", model="mistral", temperature=0.5)
 ```
 
 #### **Raises**
 
 | Exception | When |
 |-----------|------|
-| `ValueError` | Invalid model name or backend |
-| `RuntimeError` | Model download fails |
-| `EnvironmentError` | Required backend not installed |
+| `SetupError` | Invalid backend name or cannot create output directory |
+| `BackendError` | Selected backend is not available (e.g. Ollama not running) |
+| `ValidationError` | temperature out of 0-1 range, or max_tokens < 1 |
 
 #### **Usage Notes**
-- ⏱️ Takes ~30 seconds first time (downloads model)
-- 💾 Subsequent calls are instant (cached)
-- 📍 Must call before any other `quickapi` function
-- ✅ Safe to call multiple times
+- 📍 Must call before `pdf_to_dataset()`, `extract()`, `label()`, etc.
+- ✅ Safe to call multiple times (re-configures in place)
+- 🔍 Run `quickapi.check_backends()` first to see what is available
 
 ---
 
@@ -619,7 +622,7 @@ Check `result["success"]` before accessing data.
 from saara import quickapi
 
 try:
-    quickapi.setup("mistral")
+    quickapi.setup("ollama")
     result = quickapi.dataExtract_PDF("missing.pdf")
 except FileNotFoundError:
     print("PDF not found")
@@ -641,34 +644,25 @@ except RuntimeError as e:
 
 ## Configuration Reference
 
-### Environment Variables
-
-```bash
-# Cache location
-export SAARA_CACHE_DIR="/custom/path"
-
-# Inference settings
-export SAARA_BACKEND="vllm"
-export SAARA_DEVICE="cuda:0"
-
-# Logging
-export SAARA_LOG_LEVEL="DEBUG"
-```
-
-### Programmatic Configuration
+### Utility Functions
 
 ```python
 from saara import quickapi
 
-# Get current config
-config = quickapi.get_config()
+# Check which backends are available before setup
+quickapi.check_backends()
 
-# Update configuration
-quickapi.set_config(
-    cache_dir="/data/models",
-    device="cuda",
-    backend="vllm"
-)
+# View current configuration and status after setup
+status = quickapi.get_status()
+print(status)
+# {"initialized": True, "backend": "ollama", "model": "mistral", ...}
+
+# Reset global state (clears setup, useful for testing)
+quickapi.reset()
+
+# List supported output formats
+print(quickapi.list_formats())
+# → ['alpaca', 'chatml', 'sharegpt', 'completion', 'dpo', 'chatml_tools']
 ```
 
 ---
@@ -680,7 +674,7 @@ quickapi.set_config(
 ```python
 from saara import quickapi
 
-quickapi.setup("mistral")
+quickapi.setup("ollama", model="mistral")
 
 pdf_files = [f"doc_{i}.pdf" for i in range(100)]
 
@@ -742,4 +736,4 @@ for i in range(0, 100, chunk_size):
 ---
 
 **Last Updated**: 2026  
-**Version**: SAARA 1.6.4+
+**Version**: SAARA 1.7.0+
