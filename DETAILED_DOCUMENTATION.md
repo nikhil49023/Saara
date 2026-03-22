@@ -42,8 +42,10 @@ It exposes a high-level public API via saara package imports and lazily loads he
 - Simplified inference surface to local-only providers.
 - Unified local provider modes are now: `auto`, `vllm`, and `ollama`.
 - Removed cloud API quick helpers from the top-level quickstart interface.
-- Updated docs to reflect local-first usage and dependencies.
-- Archived experimental tokenizer and token-storage modules (`tokenizers.py`, `token_storage.py`); use `TrainingPipeline` / `quick_train` for modular training instead.
+- Updated docs to reflect local-first, data-only usage.
+- Added `dataGenerate_Distillation()` and `synthesize()` for model distillation dataset generation.
+- Restricted public API `__all__` to data operations only (training APIs excluded).
+- Domain-agnostic AI prompts across labeling, synthetic generation, and quality judging.
 
 ---
 
@@ -115,9 +117,9 @@ print(llm.generate("Summarize this framework in 3 bullets."))
 |---|---|---|
 | Config and Contracts | Type-safe configuration and errors | saara/config.py, saara/exceptions.py, saara/protocols.py |
 | Ingestion and Processing | Extract, clean, chunk, label, generate datasets | saara/pdf_extractor.py, saara/cleaner.py, saara/chunker.py, saara/labeler.py, saara/dataset_generator.py |
-| Training Stack | Fine-tuning, modular training pipeline | saara/train.py, saara/training_pipeline.py |
+| Synthesis and Distillation | Teacher model responses, synthetic data generation | saara/quickapi.py, saara/synthetic_generator.py |
 | Inference and RAG | Querying and retrieval-augmented generation | saara/rag_engine.py, saara/llm_providers.py |
-| Runtime and Utilities | Cloud setup, acceleration, visualization, file utilities | saara/cloud_runtime.py, saara/accelerator.py, saara/visualizer.py, saara/file_utils.py, saara/quickstart.py |
+| Format and Utilities | Output format conversion, file helpers | saara/formats.py, saara/file_utils.py |
 
 ---
 
@@ -129,12 +131,11 @@ These are importable directly from saara.
 
 | Symbol | Type | Description |
 |---|---|---|
-| TrainConfig | dataclass | Training configuration |
+| TrainConfig | dataclass | Training configuration (used internally) |
 | PipelineConfig | dataclass | Data pipeline configuration |
-| EvaluatorConfig | dataclass | Evaluation configuration |
-| DeployerConfig | dataclass | Deployment configuration |
+| EvaluatorConfig | dataclass | Evaluation configuration (used internally) |
+| DeployerConfig | dataclass | Deployment configuration (used internally) |
 | RAGConfig | dataclass | RAG configuration |
-| PretrainConfig | dataclass | Pretraining configuration |
 | convert_config | function | Converts dict-style config to typed config |
 
 ### 5.2 Exception APIs
@@ -167,36 +168,17 @@ These are importable directly from saara.
 | DataType | enum | Synthetic data categories |
 | QualityJudge | class | Synthetic sample quality scoring |
 
-### 5.4 Training and Model APIs
+### 5.4 QuickAPI and Distillation
 
 | Symbol | Type | Description |
 |---|---|---|
-| LLMTrainer | class | Fine-tuning entrypoint |
-| ModelEvaluator | class | Model quality/evaluation workflows |
-| ModelDeployer | class | Deployment/export workflows |
+| quickapi | module | Main QuickAPI interface (setup, extract, label, distill, convert, synthesize) |
+| dataGenerate_Distillation | function | Teacher model → distillation dataset |
+| synthesize | function | Alias for `dataGenerate_Distillation` |
 
-### 5.5 Runtime and Visualization APIs
+> **Note:** Training APIs (`LLMTrainer`, `ModelEvaluator`, `ModelDeployer`, `NeuralAccelerator`, `TrainingPipeline`, `PretrainConfig`, etc.) are intentionally **not** exposed in SAARA's public `__all__`. SAARA is a data factory — plug its output into [Axolotl](https://github.com/OpenAccess-AI-Collective/axolotl), [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory), or [Unsloth](https://github.com/unslothai/unsloth) for training.
 
-| Symbol | Type | Description |
-|---|---|---|
-| NeuralAccelerator | class | Performance optimization utilities |
-| create_accelerator | function | Accelerator factory |
-| TrainingDashboard | class | Training visualization dashboard |
-| ModelAnalyzer | class | Model analysis helpers |
-| create_visualizer | function | Visualizer factory |
-| CloudRuntime | class | Cloud runtime setup helper |
-| setup_colab | function | Colab environment setup |
-| is_cloud_environment | function | Cloud environment detection |
-
-### 5.6 Modular Training APIs
-
-| Symbol | Type | Description |
-|---|---|---|
-| TrainingPipeline | class | Stage-based modular training |
-| TrainingPipelineConfig | dataclass | Training pipeline settings |
-| quick_train | function | Fast modular training shortcut |
-
-### 5.7 RAG APIs
+### 5.5 RAG APIs
 
 | Symbol | Type | Description |
 |---|---|---|

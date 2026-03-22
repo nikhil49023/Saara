@@ -388,18 +388,21 @@ print(f"Diversity: {stats['diversity_score']:.2f}")
 
 ---
 
-### `dataTokenize_Dataset(cleaned_data, tokenizer_name="default", add_special_tokens=True)`
+---
 
-Convert text to tokens for model training.
+### `dataGenerate_Distillation(seed_prompts, format, responses_per_prompt, diversity_mode, system_prompt, save_output)`
+
+Generate a model distillation dataset by running seed prompts through the configured teacher model.
 
 #### **Signature**
 ```python
-def dataTokenize_Dataset(
-    cleaned_data: dict,
-    tokenizer_name: str = "default",
-    add_special_tokens: bool = True,
-    padding: str = "max_length",
-    max_length: int = 2048
+def dataGenerate_Distillation(
+    seed_prompts: Union[List[str], str],
+    format: str = "alpaca",
+    responses_per_prompt: int = 1,
+    diversity_mode: bool = True,
+    system_prompt: str = "",
+    save_output: bool = True
 ) -> dict
 ```
 
@@ -407,63 +410,62 @@ def dataTokenize_Dataset(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `cleaned_data` | `dict` | **required** | Output from `dataDistill_Dataset()` |
-| `tokenizer_name` | `str` | `"default"` | `"default"`, `"gpt2"`, `"bert"`, etc |
-| `add_special_tokens` | `bool` | `True` | Add BOS/EOS tokens |
-| `padding` | `str` | `"max_length"` | `"max_length"` or `"do_not_pad"` |
-| `max_length` | `int` | `2048` | Max sequence length |
+| `seed_prompts` | `list[str]` or `str` | **required** | List of instruction strings OR path to `.txt`/`.jsonl` file |
+| `format` | `str` | `"alpaca"` | Output format: `alpaca`, `chatml`, `sharegpt`, `dpo`, `completion` |
+| `responses_per_prompt` | `int` | `1` | Responses per prompt (use `2` + `format="dpo"` for DPO pairs) |
+| `diversity_mode` | `bool` | `True` | Vary temperature slightly between responses for diversity |
+| `system_prompt` | `str` | `""` | System prompt injected with each generation |
+| `save_output` | `bool` | `True` | Save output JSONL to `output_dir` |
 
 #### **Returns**
 
 ```python
 {
-    "success": bool,
-    "format": "tokens",
-    "samples": [
-        {
-            "id": str,
-            "input_ids": [int, int, ...],      # Token IDs
-            "attention_mask": [int, int, ...], # Attention mask
-            "token_count": int,
-            "original_id": str
-        },
-        ...
-    ],
-    "statistics": {
-        "total_tokens": int,
-        "avg_tokens_per_sample": float,
-        "tokenizer_used": str,
-        "vocab_size": int
-    }
+    "total_prompts": int,
+    "total_samples": int,
+    "format": str,
+    "items": [dict, ...],
+    "output_file": str or None
 }
 ```
 
 #### **Examples**
 
 ```python
-# Standard tokenization
-tokens = quickapi.dataTokenize_Dataset(clean)
-
-# Custom tokenizer
-tokens = quickapi.dataTokenize_Dataset(
-    clean,
-    tokenizer_name="gpt2",
-    max_length=1024
+# Ollama — basic distillation
+quickapi.setup("ollama", model="mistral")
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts=["Explain gradient descent.", "What is backpropagation?"],
+    format="alpaca"
 )
 
-# Check results
-print(f"Total tokens: {tokens['statistics']['total_tokens']}")
-for sample in tokens['samples'][:2]:
-    print(f"Sample: {sample['token_count']} tokens")
-    print(f"IDs: {sample['input_ids'][:10]}...")
+# vLLM — large-batch distillation from file
+quickapi.setup("vllm", model="mistralai/Mistral-7B-Instruct-v0.2")
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts="my_prompts.txt",   # one per line
+    format="chatml",
+    responses_per_prompt=3,
+    diversity_mode=True
+)
+
+# DPO pairs (chosen / rejected)
+result = quickapi.dataGenerate_Distillation(
+    seed_prompts=["Compare SQL vs NoSQL."],
+    format="dpo",
+    responses_per_prompt=2
+)
+
+# Short alias
+result = quickapi.synthesize(prompts, format="alpaca")
 ```
 
 #### **Raises**
 
 | Exception | When |
 |-----------|------|
-| `ValueError` | Invalid cleaned_data format |
-| `ImportError` | Tokenizer not available |
+| `SetupError` | `setup()` not called first |
+| `ValidationError` | No valid prompts found |
+| `BackendError` | LLM backend not available |
 
 ---
 
