@@ -10,7 +10,7 @@ def to_langchain_tool(tool: AgentTool) -> Any:
     try:
         from langchain_core.tools import StructuredTool
     except ImportError as exc:
-        raise RuntimeError("Install optional agent dependencies: pip install 'saara[agents]'") from exc
+        raise RuntimeError("Install optional agent dependencies: pip install 'saara-ai[agents]'") from exc
 
     def _invoke(action: str, query: str | None = None, limit: int = 5, url: str | None = None) -> Any:
         args: dict[str, Any] = {"action": action}

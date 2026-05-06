@@ -1,86 +1,66 @@
 from __future__ import annotations
 
-import os
-import shutil
 import sys
 import time
+
+from rich.align import Align
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, TextColumn
+from rich.text import Text
+
+from .theme import console
 
 BRAND_NAME = "Saara"
 TAGLINE = "Local-first dataset agents for research, labeling, and distillation"
 
-LOGO = [
-    "   _____                       ",
-    "  / ___/____ _____ __________ _",
-    "  \\__ \\/ __ `/ __ `/ ___/ __ `/",
-    " ___/ / /_/ / /_/ / /  / /_/ / ",
-    "/____/\\__,_/\\__,_/_/   \\__,_/  ",
-]
+LOGO = r"""
+   _____                       
+  / ___/____ _____ __________ _
+  \__ \/ __ `/ __ `/ ___/ __ `/
+ ___/ / /_/ / /_/ / /  / /_/ / 
+/____/\__,_/\__,_/_/   \__,_/  
+"""
 
-PALETTE = [
-    "\033[38;5;45m",
-    "\033[38;5;81m",
-    "\033[38;5;117m",
-    "\033[38;5;153m",
-    "\033[38;5;159m",
-]
-DIM = "\033[2m"
-BOLD = "\033[1m"
-RESET = "\033[0m"
-
-
-def supports_color(stream: object = sys.stdout) -> bool:
-    if os.environ.get("NO_COLOR"):
-        return False
-    return bool(getattr(stream, "isatty", lambda: False)())
-
-
-def splash_text(color: bool = True, frame: int = 0) -> str:
-    width = shutil.get_terminal_size((88, 24)).columns
-    lines: list[str] = []
-    for index, line in enumerate(LOGO):
-        prefix = PALETTE[(index + frame) % len(PALETTE)] if color else ""
-        lines.append(_center(f"{prefix}{line}{RESET if color else ''}", width))
-    subtitle = f"{BOLD if color else ''}{TAGLINE}{RESET if color else ''}"
-    lines.append("")
-    lines.append(_center(subtitle, width))
-    lines.append("")
-    lines.extend(_getting_started_lines(width, color))
-    return "\n".join(lines)
-
+def splash_text() -> str:
+    """Returns the plain text version of the splash screen."""
+    return f"{LOGO}\n{TAGLINE}"
 
 def render_splash(animated: bool = True, seconds: float = 1.4, stream: object = sys.stdout) -> None:
-    color = supports_color(stream)
     if not animated or not getattr(stream, "isatty", lambda: False)():
-        print(splash_text(color=color, frame=0), file=stream)
+        _print_static_splash()
         return
 
-    frames = max(1, int(seconds / 0.08))
-    for frame in range(frames):
-        print("\033[2J\033[H", end="", file=stream)
-        print(splash_text(color=color, frame=frame), file=stream)
-        print("", file=stream)
-        print(_center(_progress(frame + 1, frames, color), shutil.get_terminal_size((88, 24)).columns), file=stream)
-        stream.flush()
-        time.sleep(0.08)
+    _animate_splash(seconds)
 
 
-def _progress(current: int, total: int, color: bool) -> str:
-    cells = 28
-    filled = int(cells * current / total)
-    bar = "#" * filled + "-" * (cells - filled)
-    if color:
-        return f"\033[38;5;45m[{bar}]\033[0m"
-    return f"[{bar}]"
+def _print_static_splash() -> None:
+    logo_text = Text(LOGO, style="brand")
+    console.print(Align.center(logo_text))
+    console.print(Align.center(Text(TAGLINE, style="tagline")))
+    console.print()
+    _print_getting_started()
 
 
-def _center(text: str, width: int) -> str:
-    plain_len = _visible_len(text)
-    padding = max(0, (width - plain_len) // 2)
-    return " " * padding + text
+def _animate_splash(seconds: float) -> None:
+    with Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=40),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        console=console,
+        transient=True,
+    ) as progress:
+        task = progress.add_task("[brand]Loading Saara...[/]", total=100)
+        
+        while not progress.finished:
+            progress.update(task, advance=5)
+            time.sleep(seconds / 20)
+            
+    console.clear()
+    _print_static_splash()
 
 
-def _getting_started_lines(width: int, color: bool) -> list[str]:
-    title = f"{BOLD if color else ''}Get started{RESET if color else ''}"
+def _print_getting_started() -> None:
     commands = [
         "saara wizard",
         "saara doctor",
@@ -90,23 +70,10 @@ def _getting_started_lines(width: int, color: bool) -> list[str]:
         "saara validate .mlforge/datasets/robotics-motion-planning.jsonl",
         "saara --help",
     ]
-    lines = [_center(title, width)]
-    for command in commands:
-        prefix = f"{DIM if color else ''}$ {RESET if color else ''}"
-        lines.append(_center(f"{prefix}{command}", width))
-    return lines
-
-
-def _visible_len(text: str) -> int:
-    length = 0
-    index = 0
-    while index < len(text):
-        if text[index : index + 2] == "\033[":
-            end = text.find("m", index)
-            if end == -1:
-                break
-            index = end + 1
-            continue
-        length += 1
-        index += 1
-    return length
+    
+    getting_started = Text("Get started\n", style="bold white")
+    for cmd in commands:
+        getting_started.append(f"$ ", style="dim")
+        getting_started.append(f"{cmd}\n", style="command")
+    
+    console.print(Align.center(getting_started))

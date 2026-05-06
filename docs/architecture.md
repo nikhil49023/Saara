@@ -33,7 +33,7 @@ Use for small jobs, validation, CSV/JSON conversion, light labeling, and smoke t
 
 Use for normal local workflows.
 
-- Install method: `pipx install saara` or `uv tool install saara`.
+- Install method: `pipx install saara-ai` or `uv tool install saara-ai`.
 - Runtime: Ollama at `http://localhost:11434`.
 - Research: Firecrawl-local at `http://localhost:3002`.
 - Optional extras: PDF parsing, Parquet/Arrow/HF exports.
@@ -42,7 +42,7 @@ Use for normal local workflows.
 
 Use for large dataset generation, distillation, judging, embeddings, and multimodal parsing.
 
-- Install method: `uv tool install saara[all]` or project venv.
+- Install method: `uv tool install 'saara-ai[all]'` or project venv.
 - Runtime: vLLM OpenAI-compatible server at `http://localhost:8000/v1`.
 - Optional model workers for embeddings, VLM, judge, and teacher models.
 - Store artifacts locally or in S3/MinIO later.
@@ -204,9 +204,9 @@ Runtime recommendations:
 Ship in layers:
 
 1. Python package with console script: `mlforge`.
-2. `pipx install saara` for normal users.
-3. `uv tool install saara` for fast isolated installs.
-4. Optional extras: `saara[data]`, `saara[pdf]`, `saara[agents]`, `saara[all]`.
+2. `pipx install saara-ai` for normal users.
+3. `uv tool install saara-ai` for fast isolated installs.
+4. Optional extras: `saara-ai[data]`, `saara-ai[pdf]`, `saara-ai[agents]`, `saara-ai[all]`.
 5. Standalone PyInstaller binaries for users without Python.
 6. Docker image for server/GPU environments.
 

@@ -32,7 +32,8 @@ saara generate topic "robotics motion planning" \
   --samples 20 \
   --provider ollama \
   --model qwen \
-  --format jsonl
+  --format jsonl \
+  --output-dir runs/robotics
 ```
 
 With Firecrawl-local research:
@@ -46,6 +47,23 @@ saara generate topic "dataset distillation" \
   --firecrawl-url http://localhost:3002 \
   --format jsonl
 ```
+
+For pretraining text, reasoning traces, or tool-calling examples:
+
+```bash
+saara generate topic "agent tool use" \
+  --dataset-type tool-calling \
+  --include-reasoning \
+  --include-tool-calls \
+  --system-prompt-file prompts/system.txt \
+  --prompt-template-file prompts/topic-template.txt \
+  --temperature 0.1 \
+  --max-tokens 1024 \
+  --output-dir runs/tool-use
+```
+
+Use `--dataset-type pretraining` for plain text corpora and `--dataset-type finetuning`
+for chat/SFT-style datasets.
 
 ## Validate a Dataset
 
@@ -92,13 +110,21 @@ saara export data.jsonl --to hf --out hf_dataset/
   "kind": "topic-dataset",
   "topic": "robotics motion planning",
   "samples": 100,
+  "dataset_type": "finetuning",
   "research": "firecrawl",
+  "temperature": 0.2,
+  "max_tokens": 1024,
+  "include_reasoning": false,
+  "include_tool_calls": false,
+  "system_prompt": "You generate grounded dataset examples and return JSON only.",
   "provider": {
     "name": "ollama",
-    "model": "qwen"
+    "model": "qwen",
+    "base_url": "http://localhost:11434"
   },
   "output": {
     "format": "jsonl",
+    "dir": "runs/robotics",
     "path": ".mlforge/datasets/robotics-motion-planning.jsonl"
   }
 }
@@ -128,3 +154,5 @@ Each workflow writes:
 - run metadata
 
 Generated examples include source provenance whenever research or document ingestion is used.
+When an output directory is provided, datasets, reports, and run artifacts are kept together
+under that directory for easier experiment tracking.

@@ -57,7 +57,7 @@ def _export_arrow_like(rows: list[dict[str, Any]], output_path: Path, fmt: str) 
         import pyarrow as pa
         import pyarrow.parquet as pq
     except ImportError as exc:
-        raise RuntimeError("Install optional data dependencies: pip install 'saara[data]'") from exc
+        raise RuntimeError("Install optional data dependencies: pip install 'saara-ai[data]'") from exc
     table = pa.Table.from_pylist(rows)
     if fmt == "parquet":
         pq.write_table(table, output_path)
@@ -72,7 +72,7 @@ def _export_hf(rows: list[dict[str, Any]], output_path: Path) -> Path:
     try:
         from datasets import Dataset
     except ImportError as exc:
-        raise RuntimeError("Install optional data dependencies: pip install 'saara[data]'") from exc
+        raise RuntimeError("Install optional data dependencies: pip install 'saara-ai[data]'") from exc
     dataset = Dataset.from_list(rows)
     dataset.save_to_disk(str(output_path))
     return output_path

@@ -1,0 +1,33 @@
+{
+  "run_id": "topic-robotics-motion-planning-43c9faab7283",
+  "name": "topic-robotics-motion-planning",
+  "run_dir": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_robotics_mock/runs/topic-robotics-motion-planning-43c9faab7283",
+  "status": "completed",
+  "created_at": "2026-05-06T05:46:20.269817+00:00",
+  "updated_at": "2026-05-06T05:46:20.270878+00:00",
+  "config": {
+    "topic": "robotics motion planning",
+    "samples": 5,
+    "provider": "mock",
+    "format": "jsonl",
+    "research": "none",
+    "firecrawl_url": "http://localhost:3002",
+    "dataset_type": "finetuning",
+    "temperature": 0.2,
+    "max_tokens": null,
+    "include_reasoning": false,
+    "include_tool_calls": false
+  },
+  "artifacts": {
+    "research_chunks": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_robotics_mock/runs/topic-robotics-motion-planning-43c9faab7283/artifacts/research_chunks.jsonl",
+    "dataset": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/datasets/topic_robotics_mock.jsonl",
+    "validation_report": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_robotics_mock/reports/topic_robotics_mock-validation.json",
+    "manifest": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_robotics_mock/runs/topic-robotics-motion-planning-43c9faab7283/manifest.json"
+  },
+  "metrics": {
+    "examples": 5,
+    "invalid_examples": 0,
+    "duplicate_examples": 0,
+    "research_chunks": 1
+  }
+}

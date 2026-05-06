@@ -16,7 +16,7 @@ from mlforge.ui.splash import render_splash
 from mlforge.workflows.config import load_workflow_config
 from mlforge.workflows.distill import DistillWorkflow
 from mlforge.workflows.label_dataset import LabelDatasetWorkflow
-from mlforge.workflows.topic_dataset import TopicDatasetWorkflow
+from mlforge.workflows.topic_dataset import DATASET_TYPES, TopicDatasetWorkflow
 
 
 PROVIDERS = ["mock", "ollama", "vllm", "openai-compatible"]
@@ -153,16 +153,25 @@ def action_firecrawl_health() -> None:
 def action_generate_topic(root: str) -> None:
     topic = prompt_required("Topic")
     samples = prompt_int("Samples", 10, minimum=1)
+    output_dir = prompt("Output directory", root)
+    root = output_dir
     provider_name = choose("Provider", PROVIDERS, "mock")
     model = prompt_optional("Model", "qwen" if provider_name == "ollama" else None)
     base_url = prompt_optional("Base URL", None)
     api_key = prompt_optional("API key", None)
+    dataset_type = choose("Dataset type", sorted(DATASET_TYPES), "finetuning")
+    include_reasoning = prompt("Include reasoning fields?", "no").lower() in {"y", "yes", "true", "1"}
+    include_tool_calls = prompt("Include tool-calling fields?", "no").lower() in {"y", "yes", "true", "1"}
+    temperature = prompt_float("Temperature", 0.2, minimum=0.0)
+    max_tokens = prompt_optional("Max tokens", None)
+    system_prompt = prompt_optional("System prompt override", None)
+    prompt_template = prompt_optional("Prompt template override", None)
     output_format = choose("Output format", FORMATS, "jsonl")
     research = choose("Research", ["none", "firecrawl"], "none")
     firecrawl_url = "http://localhost:3002"
     if research == "firecrawl":
         firecrawl_url = prompt("Firecrawl URL", firecrawl_url)
-    out = prompt_optional("Output path", None)
+    out = prompt_optional("Output path", str(Path(output_dir) / "datasets" / f"{slug(topic)}.{output_format}"))
     provider = create_provider(provider_name, model, base_url, api_key)
     workflow = TopicDatasetWorkflow(
         topic=topic,
@@ -172,7 +181,14 @@ def action_generate_topic(root: str) -> None:
         output_path=Path(out) if out else None,
         research=research,
         firecrawl_url=firecrawl_url,
-        store=ArtifactStore(root),
+        store=ArtifactStore(output_dir),
+        dataset_type=dataset_type,
+        system_prompt=system_prompt,
+        prompt_template=prompt_template,
+        temperature=temperature,
+        max_tokens=int(max_tokens) if max_tokens else None,
+        include_reasoning=include_reasoning,
+        include_tool_calls=include_tool_calls,
     )
     with spinner("Generating dataset"):
         manifest = workflow.run()
@@ -182,7 +198,9 @@ def action_generate_topic(root: str) -> None:
 
 def action_validate() -> None:
     path = prompt_required("Dataset path")
-    report_path = prompt_optional("Report path", None)
+    output_dir = prompt_optional("Output directory", None)
+    default_report = str(Path(output_dir) / "reports" / f"{Path(path).stem}-validation.json") if output_dir else None
+    report_path = prompt_optional("Report path", default_report)
     with spinner("Validating dataset"):
         report = validate_dataset(path)
     payload = report.to_dict()
@@ -199,11 +217,20 @@ def action_label() -> None:
     labels = [label.strip() for label in prompt_required("Labels, comma-separated").split(",") if label.strip()]
     label_field = prompt("Label field", "label")
     output_format = choose("Output format", FORMATS, "jsonl")
-    output_path = prompt_required("Output path")
+    output_dir = prompt_optional("Output directory", None)
+    default_output = str(Path(output_dir) / "datasets" / f"{Path(input_path).stem}-labeled.{output_format}") if output_dir else None
+    output_path = prompt("Output path", default_output)
+    if not output_path:
+        print("Output path or output directory is required.")
+        return
     provider_name = choose("Provider", PROVIDERS, "mock")
     model = prompt_optional("Model", "qwen" if provider_name == "ollama" else None)
     base_url = prompt_optional("Base URL", None)
     api_key = prompt_optional("API key", None)
+    temperature = prompt_float("Temperature", 0.0, minimum=0.0)
+    max_tokens = prompt_optional("Max tokens", None)
+    system_prompt = prompt_optional("System prompt override", None)
+    prompt_template = prompt_optional("Prompt template override", None)
     provider = create_provider(provider_name, model, base_url, api_key)
     workflow = LabelDatasetWorkflow(
         input_path=Path(input_path),
@@ -212,6 +239,10 @@ def action_label() -> None:
         labels=labels,
         label_field=label_field,
         output_format=output_format,
+        system_prompt=system_prompt,
+        prompt_template=prompt_template,
+        temperature=temperature,
+        max_tokens=int(max_tokens) if max_tokens else None,
     )
     with spinner("Labeling dataset"):
         manifest = workflow.run()
@@ -223,7 +254,12 @@ def action_distill() -> None:
     input_path = prompt_required("Input dataset")
     method = choose("Method", ["sft", "dpo"], "sft")
     output_format = choose("Output format", FORMATS, "jsonl")
-    output_path = prompt_required("Output path")
+    output_dir = prompt_optional("Output directory", None)
+    default_output = str(Path(output_dir) / "datasets" / f"{Path(input_path).stem}-{method}.{output_format}") if output_dir else None
+    output_path = prompt("Output path", default_output)
+    if not output_path:
+        print("Output path or output directory is required.")
+        return
     provider_name = choose("Provider", PROVIDERS, "mock")
     model = prompt_optional("Model", "qwen" if provider_name == "ollama" else None)
     base_url = prompt_optional("Base URL", None)
@@ -245,7 +281,12 @@ def action_distill() -> None:
 def action_export() -> None:
     input_path = prompt_required("Input dataset")
     output_format = choose("Output format", FORMATS, "jsonl")
-    output_path = prompt_required("Output path")
+    output_dir = prompt_optional("Output directory", None)
+    default_output = str(Path(output_dir) / "exports" / f"{Path(input_path).stem}.{output_format}") if output_dir else None
+    output_path = prompt("Output path", default_output)
+    if not output_path:
+        print("Output path or output directory is required.")
+        return
     with spinner("Exporting dataset"):
         rows = load_rows(input_path)
         output = export_examples(rows, output_path, output_format)
@@ -261,21 +302,33 @@ def action_run(root: str) -> None:
         raise ValueError(f"Unsupported workflow kind: {kind}")
     provider_config = _as_dict(config.get("provider", {}), "provider")
     output_config = _as_dict(config.get("output", {}), "output")
+    output_dir = Path(str(output_config["dir"])) if output_config.get("dir") else None
     provider = create_provider(
         provider_config.get("name", "mock"),
         provider_config.get("model"),
         provider_config.get("base_url"),
         provider_config.get("api_key"),
     )
+    output_format = str(output_config.get("format", "jsonl"))
+    output_path = Path(output_config["path"]) if output_config.get("path") else None
+    if output_path is None and output_dir:
+        output_path = output_dir / "datasets" / f"{slug(str(config['topic']))}.{output_format}"
     workflow = TopicDatasetWorkflow(
         topic=str(config["topic"]),
         samples=int(config.get("samples", 10)),
         provider=provider,
-        output_format=str(output_config.get("format", "jsonl")),
-        output_path=Path(output_config["path"]) if output_config.get("path") else None,
+        output_format=output_format,
+        output_path=output_path,
         research=str(config.get("research", "none")),
         firecrawl_url=str(config.get("firecrawl_url", "http://localhost:3002")),
-        store=ArtifactStore(root),
+        store=ArtifactStore(output_dir or root),
+        dataset_type=str(config.get("dataset_type", "finetuning")),
+        system_prompt=config.get("system_prompt"),
+        prompt_template=config.get("prompt_template"),
+        temperature=float(config.get("temperature", 0.2)),
+        max_tokens=int(config["max_tokens"]) if config.get("max_tokens") else None,
+        include_reasoning=bool(config.get("include_reasoning", False)),
+        include_tool_calls=bool(config.get("include_tool_calls", False)),
     )
     with spinner("Running workflow"):
         manifest = workflow.run()
@@ -322,6 +375,20 @@ def prompt_int(label: str, default: int, minimum: int | None = None) -> int:
         return number
 
 
+def prompt_float(label: str, default: float, minimum: float | None = None) -> float:
+    while True:
+        value = prompt(label, str(default))
+        try:
+            number = float(value)
+        except ValueError:
+            print("Enter a number.")
+            continue
+        if minimum is not None and number < minimum:
+            print(f"Enter a number >= {minimum}.")
+            continue
+        return number
+
+
 def choose(label: str, choices: list[str], default: str) -> str:
     print(f"{label}:")
     for index, choice in enumerate(choices, start=1):
@@ -346,3 +413,8 @@ def _as_dict(value: object, name: str) -> dict[str, object]:
     if not isinstance(value, dict):
         raise ValueError(f"{name} must be an object")
     return value
+
+
+def slug(value: str) -> str:
+    safe = "".join(char.lower() if char.isalnum() else "-" for char in value)
+    return "-".join(part for part in safe.split("-") if part) or "dataset"

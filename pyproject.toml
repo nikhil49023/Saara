@@ -3,8 +3,8 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "saara"
-version = "0.1.0"
+name = "saara-ai"
+version = "1.6.9"
 description = "Saara: local-first CLI for dataset generation, labeling, validation, and distillation workflows."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,9 +25,9 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/saara-ai/saara"
-Documentation = "https://github.com/saara-ai/saara/tree/main/docs"
-Issues = "https://github.com/saara-ai/saara/issues"
+Homepage = "https://github.com/nikhil49023/Saara"
+Documentation = "https://github.com/nikhil49023/Saara/tree/main/docs"
+Issues = "https://github.com/nikhil49023/Saara/issues"
 
 [project.optional-dependencies]
 dev = ["build>=1.2", "pytest>=8.0", "ruff>=0.5", "setuptools>=68", "twine>=5.0", "wheel"]

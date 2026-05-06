@@ -3,8 +3,13 @@
   "experiment_id": "topic_grounded_firecrawl_template",
   "topic": "dataset distillation",
   "samples": 20,
+  "dataset_type": "reasoning",
   "research": "firecrawl",
   "firecrawl_url": "http://localhost:3002",
+  "temperature": 0.1,
+  "max_tokens": 1024,
+  "include_reasoning": true,
+  "include_tool_calls": false,
   "provider": {
     "name": "ollama",
     "model": "qwen"

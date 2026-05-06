@@ -33,7 +33,7 @@ saara splash
 saara wizard
 saara init
 saara models health --provider ollama --model qwen
-saara generate topic "robotics motion planning" --samples 20 --provider mock --format jsonl
+saara generate topic "robotics motion planning" --samples 20 --provider mock --format jsonl --output-dir runs/robotics
 saara label .mlforge/datasets/robotics-motion-planning.jsonl --labels useful,not-useful --out labeled.jsonl
 saara distill labeled.jsonl --method sft --out distilled.jsonl
 saara validate .mlforge/datasets/robotics-motion-planning.jsonl
@@ -74,6 +74,20 @@ Install all optional local features:
 pip install -e '.[all]'
 ```
 
+Fresh machine runtime setup:
+
+```bash
+saara doctor
+saara setup docker --dry-run
+saara setup ollama --dry-run
+saara setup docker ollama
+```
+
+On Debian/Ubuntu, Saara installs Docker Engine from Docker's official apt repository.
+On Linux, Ollama is installed with the official Ollama installer. Review `--dry-run`
+output before running setup commands. Saara does not pull or install models automatically;
+choose a model based on your hardware tier.
+
 After installation, use `saara` directly like a traditional CLI. The old `mlforge` command remains
 available as a compatibility alias during development.
 
@@ -103,8 +117,22 @@ The topic workflow uses a bounded `ResearchAgent` that calls:
 
 LangChain is not required for the core workflow. Saara uses its own small typed tool interface
 so Firecrawl-local calls are deterministic, auditable, and easy to test. A small adapter is
-included for projects that want LangChain-compatible tools via the optional `saara[agents]`
+included for projects that want LangChain-compatible tools via the optional `saara-ai[agents]`
 extra.
+
+## Configurable Dataset Modes
+
+Generation can target multiple training dataset shapes:
+
+- `finetuning`: chat/SFT-style message examples
+- `pretraining`: plain text examples in `output.text`
+- `reasoning`: examples with a `reasoning` field
+- `tool-calling`: examples with `tools` and `tool_calls`
+
+Most runtime and prompting behavior is user-configurable from CLI flags or workflow JSON:
+provider base URLs, model names, API keys, Firecrawl URL, system prompt, prompt template,
+temperature, max tokens, output format, and output directory. When `--output-dir` is used,
+Saara writes datasets, reports, and run artifacts into that directory.
 
 ## Runtime Providers
 

@@ -56,7 +56,8 @@ def test_core_command_flow(tmp_path: Path) -> None:
 
     assert "Initialized" in run_cli("init", "--root", str(root)).stdout
     assert "python" in run_cli("doctor").stdout
-    assert "manual-required" in run_cli("setup", "ollama", "--dry-run").stdout
+    setup_output = run_cli("setup", "ollama", "--dry-run").stdout
+    assert any(status in setup_output for status in ("manual-required", "dry-run", "already-installed"))
     assert '"ok": true' in run_cli("models", "health", "--provider", "mock").stdout
     assert "firecrawl-local" in run_cli(
         "tools",

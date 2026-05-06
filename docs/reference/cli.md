@@ -73,7 +73,7 @@ saara generate topic "robotics motion planning" \
   --samples 20 \
   --provider mock \
   --format jsonl \
-  --out dataset.jsonl
+  --output-dir runs/robotics
 ```
 
 With Firecrawl-local:
@@ -84,8 +84,33 @@ saara generate topic "dataset distillation" \
   --firecrawl-url http://localhost:3002 \
   --provider ollama \
   --model qwen \
-  --out dataset.jsonl
+  --base-url http://localhost:11434 \
+  --output-dir runs/distillation
 ```
+
+Configurable generation:
+
+```bash
+saara generate topic "agent tool use" \
+  --dataset-type tool-calling \
+  --include-reasoning \
+  --include-tool-calls \
+  --system-prompt-file prompts/system.txt \
+  --prompt-template-file prompts/topic-template.txt \
+  --temperature 0.1 \
+  --max-tokens 1024 \
+  --output-dir runs/tool-use
+```
+
+Supported `--dataset-type` values:
+
+- `finetuning`: chat/SFT-style messages
+- `pretraining`: plain text in `output.text`
+- `reasoning`: SFT-style examples with a reasoning field
+- `tool-calling`: messages plus `tools` and `tool_calls`
+
+When `--output-dir` is set, Saara writes datasets under `datasets/`, reports under
+`reports/`, and run artifacts under that directory.
 
 ## Label
 
@@ -94,7 +119,9 @@ saara label dataset.jsonl \
   --labels useful,not-useful \
   --label-field quality \
   --provider mock \
-  --out labeled.jsonl
+  --system-prompt-file prompts/label-system.txt \
+  --prompt-template-file prompts/label-template.txt \
+  --output-dir runs/labeling
 ```
 
 ## Distill
@@ -109,6 +136,7 @@ saara distill dataset.jsonl --method dpo --out dpo.jsonl
 ```bash
 saara validate dataset.jsonl
 saara validate dataset.jsonl --report validation.json
+saara validate dataset.jsonl --output-dir runs/validation
 ```
 
 The command exits with code `1` if invalid examples are found.
@@ -117,12 +145,13 @@ The command exits with code `1` if invalid examples are found.
 
 ```bash
 saara export dataset.jsonl --to json --out dataset.json
+saara export dataset.jsonl --to json --output-dir runs/export
 saara export dataset.jsonl --to csv --out dataset.csv
 saara export dataset.jsonl --to parquet --out dataset.parquet
 saara export dataset.jsonl --to hf --out hf_dataset/
 ```
 
-Parquet, Arrow, and Hugging Face exports require `saara[data]`.
+Parquet, Arrow, and Hugging Face exports require `saara-ai[data]`.
 
 ## Run
 

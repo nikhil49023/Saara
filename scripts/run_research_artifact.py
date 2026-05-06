@@ -100,6 +100,13 @@ def run_config(config_path: Path, results_dir: Path) -> dict[str, Any]:
         research=str(config.get("research", "none")),
         firecrawl_url=str(config.get("firecrawl_url", "http://localhost:3002")),
         store=store,
+        dataset_type=str(config.get("dataset_type", "finetuning")),
+        system_prompt=optional_str(config.get("system_prompt")),
+        prompt_template=optional_str(config.get("prompt_template")),
+        temperature=float(config.get("temperature", 0.2)),
+        max_tokens=int(config["max_tokens"]) if config.get("max_tokens") else None,
+        include_reasoning=bool(config.get("include_reasoning", False)),
+        include_tool_calls=bool(config.get("include_tool_calls", False)),
     )
     manifest = workflow.run()
     rows = load_rows(output_path)
@@ -115,6 +122,7 @@ def run_config(config_path: Path, results_dir: Path) -> dict[str, Any]:
         "experiment_id": experiment_id,
         "config": str(config_path.relative_to(ROOT)),
         "topic": str(config["topic"]),
+        "dataset_type": str(config.get("dataset_type", "finetuning")),
         "provider": provider_name,
         "model": provider_config.get("model"),
         "research": str(config.get("research", "none")),
@@ -133,12 +141,12 @@ def write_markdown_summary(path: Path, summaries: list[dict[str, Any]]) -> None:
     lines = [
         "# Saara Experiment Summary",
         "",
-        "| Experiment | Topic | Provider | Research | Examples | Valid | Invalid | Duplicates | Source coverage |",
-        "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+        "| Experiment | Topic | Dataset type | Provider | Research | Examples | Valid | Invalid | Duplicates | Source coverage |",
+        "| --- | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for item in summaries:
         lines.append(
-            "| {experiment_id} | {topic} | {provider} | {research} | {examples} | "
+            "| {experiment_id} | {topic} | {dataset_type} | {provider} | {research} | {examples} | "
             "{valid_examples} | {invalid_examples} | {duplicate_examples} | {source_coverage:.2%} |".format(
                 **item
             )

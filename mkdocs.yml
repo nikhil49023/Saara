@@ -6,6 +6,7 @@ nav:
   - Installation: install.md
   - User Guide: user-guide.md
   - CLI Reference: reference/cli.md
+  - Model Runtime Guide: reference/models.md
   - Architecture: architecture.md
   - Release Plan: release.md
 theme:

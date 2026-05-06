@@ -1,78 +1,41 @@
 from __future__ import annotations
 
-import itertools
-import sys
-import threading
 import time
 from contextlib import contextmanager
 from typing import Iterator
 
+from rich.console import Console
+from rich.status import Status
 
-CYAN = "\033[38;5;45m"
-BLUE = "\033[38;5;81m"
-DIM = "\033[2m"
-BOLD = "\033[1m"
-RESET = "\033[0m"
-CLEAR_LINE = "\033[2K\r"
+from .theme import console
 
 
-def is_interactive(stream: object = sys.stdout) -> bool:
+def is_interactive(stream: object = None) -> bool:
+    if stream is None:
+        return console.is_terminal
     return bool(getattr(stream, "isatty", lambda: False)())
 
 
-def color(text: str, code: str, enabled: bool | None = None) -> str:
-    if enabled is None:
-        enabled = is_interactive()
-    if not enabled:
-        return text
-    return f"{code}{text}{RESET}"
+def color(text: str, style: str) -> str:
+    return f"[{style}]{text}[/]"
 
 
 def animated_header(title: str, subtitle: str | None = None) -> None:
-    if not is_interactive():
-        print(title)
-        if subtitle:
-            print(subtitle)
-        return
-    line = "=" * min(72, max(24, len(title) + 10))
-    print(color(line, BLUE))
-    print(color(title, BOLD + CYAN))
+    console.rule(f"[brand]{title}[/]")
     if subtitle:
-        print(color(subtitle, DIM))
-    print(color(line, BLUE))
+        console.print(f"[tagline]{subtitle}[/]", justify="center")
 
 
 def success_pulse(message: str) -> None:
-    if not is_interactive():
-        print(message)
-        return
-    for shade in (DIM, BLUE, CYAN, BOLD + CYAN):
-        print(f"{CLEAR_LINE}{shade}{message}{RESET}", end="", flush=True)
-        time.sleep(0.05)
-    print()
+    console.print(f"[success]✔[/] {message}")
 
 
 @contextmanager
 def spinner(message: str) -> Iterator[None]:
     if not is_interactive():
-        print(message)
+        console.print(message)
         yield
         return
 
-    stop = threading.Event()
-    frames = itertools.cycle(["|", "/", "-", "\\"])
-
-    def run() -> None:
-        while not stop.is_set():
-            frame = next(frames)
-            print(f"{CLEAR_LINE}{CYAN}{frame}{RESET} {message}", end="", flush=True)
-            time.sleep(0.08)
-
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
-    try:
+    with console.status(f"[info]{message}...[/]", spinner="dots") as status:
         yield
-    finally:
-        stop.set()
-        thread.join(timeout=0.2)
-        print(CLEAR_LINE, end="", flush=True)

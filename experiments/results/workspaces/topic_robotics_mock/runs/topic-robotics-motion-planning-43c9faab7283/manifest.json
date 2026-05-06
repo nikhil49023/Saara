@@ -1,5 +1,5 @@
 {
-  "run_id": "topic-robotics-motion-planning-cc209185df39",
+  "run_id": "topic-robotics-motion-planning-43c9faab7283",
   "dataset_path": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/datasets/topic_robotics_mock.jsonl",
   "format": "jsonl",
   "examples": 5,
@@ -9,6 +9,12 @@
     "samples": 5,
     "provider": "mock",
     "format": "jsonl",
-    "research": "none"
+    "research": "none",
+    "firecrawl_url": "http://localhost:3002",
+    "dataset_type": "finetuning",
+    "temperature": 0.2,
+    "max_tokens": null,
+    "include_reasoning": false,
+    "include_tool_calls": false
   }
 }

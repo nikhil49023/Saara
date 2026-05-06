@@ -2,13 +2,22 @@
   "kind": "topic-dataset",
   "topic": "robotics motion planning",
   "samples": 5,
+  "dataset_type": "finetuning",
   "research": "none",
+  "temperature": 0.2,
+  "max_tokens": 512,
+  "include_reasoning": false,
+  "include_tool_calls": false,
+  "system_prompt": "You generate ML dataset examples from bounded source material. Return only JSON.",
   "provider": {
     "name": "mock",
-    "model": "mock-local"
+    "model": "mock-local",
+    "base_url": null,
+    "api_key": null
   },
   "output": {
     "format": "jsonl",
+    "dir": ".mlforge",
     "path": ".mlforge/datasets/robotics-motion-planning.jsonl"
   }
 }

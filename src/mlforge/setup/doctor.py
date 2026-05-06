@@ -42,13 +42,13 @@ def doctor_checks(firecrawl_url: str = "http://localhost:3002") -> list[Dependen
             name="pyarrow",
             required=False,
             install_url="https://arrow.apache.org/docs/python/install.html",
-            command="pip install 'saara[data]'",
+            command="pip install 'saara-ai[data]'",
         ),
         _python_module_check(
             name="datasets",
             required=False,
             install_url="https://huggingface.co/docs/datasets/installation",
-            command="pip install 'saara[data]'",
+            command="pip install 'saara-ai[data]'",
         ),
     ]
 

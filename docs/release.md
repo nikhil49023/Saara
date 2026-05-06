@@ -48,8 +48,8 @@ Optional extras:
 ## Packaging Strategy
 
 1. Publish Python package with `saara` console script.
-2. Recommend `pipx install saara` once package name is final.
-3. Recommend `uv tool install saara` for users already using uv.
+2. Recommend `pipx install saara-ai` once package name is final.
+3. Recommend `uv tool install saara-ai` for users already using uv.
 4. Keep `pip install -e .` for contributors.
 5. Build platform-specific PyInstaller binaries after alpha feedback.
 

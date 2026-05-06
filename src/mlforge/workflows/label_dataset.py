@@ -11,6 +11,17 @@ from mlforge.datasets.io import load_rows
 from mlforge.providers.base import ModelRequest
 
 
+LABEL_SYSTEM_PROMPT = "You label dataset examples. Return only valid JSON."
+LABEL_PROMPT_TEMPLATE = """Classify this dataset example.
+Allowed labels: {labels}
+Label field: {label_field}
+
+Example:
+{example}
+
+Return JSON with string field label and numeric field confidence."""
+
+
 @dataclass(slots=True)
 class LabelDatasetWorkflow:
     input_path: Path
@@ -19,6 +30,10 @@ class LabelDatasetWorkflow:
     labels: list[str]
     label_field: str = "label"
     output_format: str = "jsonl"
+    system_prompt: str | None = LABEL_SYSTEM_PROMPT
+    prompt_template: str | None = LABEL_PROMPT_TEMPLATE
+    temperature: float = 0.0
+    max_tokens: int | None = None
 
     def run(self) -> dict[str, Any]:
         rows = load_rows(self.input_path)
@@ -56,13 +71,19 @@ class LabelDatasetWorkflow:
             position = int(short_hash({"row": row, "index": index}), 16) % len(self.labels)
             return self.labels[position], 0.75
 
-        prompt = (
-            "Classify this dataset example. Return JSON with string field label and numeric "
-            f"field confidence. Allowed labels: {', '.join(self.labels)}.\n\n"
-            f"Example:\n{json.dumps(row, ensure_ascii=False)}"
+        prompt = (self.prompt_template or LABEL_PROMPT_TEMPLATE).format(
+            labels=", ".join(self.labels),
+            label_field=self.label_field,
+            example=json.dumps(row, ensure_ascii=False),
         )
         response = self.provider.generate_json(
-            ModelRequest(prompt=prompt, temperature=0.0, metadata={"index": index}),
+            ModelRequest(
+                prompt=prompt,
+                system=self.system_prompt or LABEL_SYSTEM_PROMPT,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                metadata={"index": index},
+            ),
             schema={
                 "type": "object",
                 "required": ["label", "confidence"],
