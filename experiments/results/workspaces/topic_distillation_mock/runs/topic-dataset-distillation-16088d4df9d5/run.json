@@ -1,0 +1,27 @@
+{
+  "run_id": "topic-dataset-distillation-16088d4df9d5",
+  "name": "topic-dataset-distillation",
+  "run_dir": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_distillation_mock/runs/topic-dataset-distillation-16088d4df9d5",
+  "status": "completed",
+  "created_at": "2026-05-06T05:28:07.386220+00:00",
+  "updated_at": "2026-05-06T05:28:07.387379+00:00",
+  "config": {
+    "topic": "dataset distillation",
+    "samples": 5,
+    "provider": "mock",
+    "format": "jsonl",
+    "research": "none"
+  },
+  "artifacts": {
+    "research_chunks": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_distillation_mock/runs/topic-dataset-distillation-16088d4df9d5/artifacts/research_chunks.jsonl",
+    "dataset": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/datasets/topic_distillation_mock.jsonl",
+    "validation_report": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_distillation_mock/reports/topic_distillation_mock-validation.json",
+    "manifest": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_distillation_mock/runs/topic-dataset-distillation-16088d4df9d5/manifest.json"
+  },
+  "metrics": {
+    "examples": 5,
+    "invalid_examples": 0,
+    "duplicate_examples": 0,
+    "research_chunks": 1
+  }
+}

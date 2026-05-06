@@ -1,0 +1,15 @@
+{
+  "kind": "topic-dataset",
+  "experiment_id": "topic_robotics_mock",
+  "topic": "robotics motion planning",
+  "samples": 5,
+  "research": "none",
+  "provider": {
+    "name": "mock",
+    "model": "mock-local"
+  },
+  "output": {
+    "format": "jsonl",
+    "path": "experiments/results/datasets/topic_robotics_mock.jsonl"
+  }
+}

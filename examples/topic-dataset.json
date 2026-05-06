@@ -1,0 +1,14 @@
+{
+  "kind": "topic-dataset",
+  "topic": "robotics motion planning",
+  "samples": 5,
+  "research": "none",
+  "provider": {
+    "name": "mock",
+    "model": "mock-local"
+  },
+  "output": {
+    "format": "jsonl",
+    "path": ".mlforge/datasets/robotics-motion-planning.jsonl"
+  }
+}

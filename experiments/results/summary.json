@@ -1,0 +1,34 @@
+[
+  {
+    "experiment_id": "topic_distillation_mock",
+    "config": "experiments/configs/topic_distillation_mock.json",
+    "topic": "dataset distillation",
+    "provider": "mock",
+    "model": "mock-local",
+    "research": "none",
+    "dataset_path": "experiments/results/datasets/topic_distillation_mock.jsonl",
+    "manifest_path": "experiments/results/workspaces/topic_distillation_mock",
+    "validation_report": "experiments/results/reports/topic_distillation_mock-validation.json",
+    "examples": 5,
+    "valid_examples": 5,
+    "invalid_examples": 0,
+    "duplicate_examples": 0,
+    "source_coverage": 1.0
+  },
+  {
+    "experiment_id": "topic_robotics_mock",
+    "config": "experiments/configs/topic_robotics_mock.json",
+    "topic": "robotics motion planning",
+    "provider": "mock",
+    "model": "mock-local",
+    "research": "none",
+    "dataset_path": "experiments/results/datasets/topic_robotics_mock.jsonl",
+    "manifest_path": "experiments/results/workspaces/topic_robotics_mock",
+    "validation_report": "experiments/results/reports/topic_robotics_mock-validation.json",
+    "examples": 5,
+    "valid_examples": 5,
+    "invalid_examples": 0,
+    "duplicate_examples": 0,
+    "source_coverage": 1.0
+  }
+]

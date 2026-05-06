@@ -1,0 +1,15 @@
+{
+  "kind": "topic-dataset",
+  "experiment_id": "topic_distillation_mock",
+  "topic": "dataset distillation",
+  "samples": 5,
+  "research": "none",
+  "provider": {
+    "name": "mock",
+    "model": "mock-local"
+  },
+  "output": {
+    "format": "jsonl",
+    "path": "experiments/results/datasets/topic_distillation_mock.jsonl"
+  }
+}

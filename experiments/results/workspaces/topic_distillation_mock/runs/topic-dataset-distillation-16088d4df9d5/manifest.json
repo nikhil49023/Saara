@@ -1,0 +1,14 @@
+{
+  "run_id": "topic-dataset-distillation-16088d4df9d5",
+  "dataset_path": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/datasets/topic_distillation_mock.jsonl",
+  "format": "jsonl",
+  "examples": 5,
+  "validation_report": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/workspaces/topic_distillation_mock/reports/topic_distillation_mock-validation.json",
+  "config": {
+    "topic": "dataset distillation",
+    "samples": 5,
+    "provider": "mock",
+    "format": "jsonl",
+    "research": "none"
+  }
+}

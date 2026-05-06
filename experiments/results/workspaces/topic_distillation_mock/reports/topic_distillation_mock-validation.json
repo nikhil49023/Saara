@@ -1,0 +1,10 @@
+{
+  "dataset_path": "/media/nikhil/2c6adf03-8771-49d7-8620-71a70e739578/Saara v2.0/experiments/results/datasets/topic_distillation_mock.jsonl",
+  "total_examples": 5,
+  "valid_examples": 5,
+  "invalid_examples": 0,
+  "duplicate_examples": 0,
+  "issues": [],
+  "label_distribution": {},
+  "generated_at": "2026-05-06T05:28:07.387147+00:00"
+}

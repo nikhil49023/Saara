@@ -1,0 +1,16 @@
+{
+  "kind": "topic-dataset",
+  "experiment_id": "topic_grounded_firecrawl_template",
+  "topic": "dataset distillation",
+  "samples": 20,
+  "research": "firecrawl",
+  "firecrawl_url": "http://localhost:3002",
+  "provider": {
+    "name": "ollama",
+    "model": "qwen"
+  },
+  "output": {
+    "format": "jsonl",
+    "path": "experiments/results/datasets/topic_grounded_firecrawl.jsonl"
+  }
+}
