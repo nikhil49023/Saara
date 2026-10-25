@@ -6,16 +6,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rich.markup import escape
 from rich.table import Table
-from rich.json import JSON
 
+from mlforge import __version__
 from mlforge.core.artifacts import ArtifactStore
+from mlforge.datasets.export_engine import ExportSpec, export_dataset, parse_splits
 from mlforge.datasets.exporters import export_examples
 from mlforge.datasets.io import load_rows
+from mlforge.datasets.schemas import SCHEMAS
 from mlforge.datasets.validators import validate_dataset
+from mlforge.ingest.pdf import PDFIngestConfig, PDFIngestor
 from mlforge.providers.factory import create_provider
 from mlforge.setup.doctor import doctor_checks
-from mlforge.setup.installer import run_setup, TASKS
+from mlforge.setup.installer import TASKS, run_setup
+from mlforge.setup.model import MODEL_CATALOG, HardwareDetector, ModelManager
 from mlforge.tools.firecrawl import FirecrawlClient
 from mlforge.ui.animations import spinner, success_pulse
 from mlforge.ui.interactive import launch_interactive
@@ -26,8 +31,30 @@ from mlforge.workflows.distill import DistillWorkflow
 from mlforge.workflows.label_dataset import LabelDatasetWorkflow
 from mlforge.workflows.topic_dataset import DATASET_TYPES, TopicDatasetWorkflow
 
-
 FORMATS = ["json", "jsonl", "csv", "tsv", "parquet", "arrow", "hf"]
+
+QUICKSTART = """quick start:
+  saara doctor                                    check runtime requirements
+  saara models setup --dry-run                    pick a local Gemma model for this machine
+  saara generate topic "solar energy" --samples 20 --provider mock --output-dir runs/solar
+  saara validate runs/solar/datasets/solar-energy.jsonl
+  saara ingest pdf ./papers --output-dir runs/papers --no-vision
+  saara export runs/solar/datasets/solar-energy.jsonl --to jsonl --schema openai-chat \\
+      --split train=0.9,val=0.05,test=0.05 --out exports/solar
+
+docs: https://github.com/nikhil49023/Saara#readme
+"""
+
+EXPORT_EXAMPLES = """examples:
+  saara export data.jsonl --to parquet --out data.parquet
+  saara export data.jsonl --to jsonl --schema sharegpt --out exports/llamafactory
+  saara export data.jsonl --to jsonl --schema openai-chat --split train=0.9,test=0.1 --group-by metadata.source --out exports/openai
+  saara export pairs.jsonl --to parquet --schema dpo --shard-size 50000 --out exports/dpo
+  saara export data.jsonl --to jsonl --schema vertex-gemini --compress gzip --out exports/vertex
+
+schemas: openai-chat (OpenAI/Together/Unsloth/TRL), sharegpt (LLaMA-Factory/Axolotl), alpaca, chatml,
+         vertex-gemini (Vertex AI tuning), dpo (TRL preference pairs), text (pretraining), saara (native)
+"""
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -42,11 +69,23 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         args.func(args)
+    except KeyboardInterrupt:
+        console.print("\n[dim]Interrupted.[/]")
+        sys.exit(130)
     except Exception as exc:
         if hasattr(args, "verbose") and args.verbose:
             raise
-        console.print(f"[error]Error:[/] {exc}")
+        console.print(f"[error]Error:[/] {escape(_friendly_error(exc))}")
+        console.print("[dim]Run with --verbose for the full traceback.[/]")
         sys.exit(1)
+
+
+def _friendly_error(exc: Exception) -> str:
+    if isinstance(exc, FileNotFoundError):
+        return f"file not found: {exc.filename or exc}"
+    if isinstance(exc, ModuleNotFoundError):
+        return f"missing optional dependency '{exc.name}'. Try: pip install 'saara-ai[all]'"
+    return str(exc)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,7 +95,10 @@ def build_parser() -> argparse.ArgumentParser:
             "Saara is a local-first CLI for dataset generation, labeling, validation, "
             "research, and distillation workflows."
         ),
+        epilog=QUICKSTART,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=f"saara {__version__}")
     parser.add_argument("--verbose", action="store_true", help="Show full stack traces on error")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -91,11 +133,28 @@ def build_parser() -> argparse.ArgumentParser:
     setup.add_argument("--dry-run", action="store_true", help="Show actions without running install commands")
     setup.set_defaults(func=cmd_setup)
 
-    models = sub.add_parser("models", help="Inspect local model providers")
+    models = sub.add_parser("models", help="Inspect local model providers and manage local Gemma models")
     models_sub = models.add_subparsers(dest="models_command", required=True)
     health = models_sub.add_parser("health", help="Check provider health")
     add_provider_args(health)
     health.set_defaults(func=cmd_models_health)
+
+    hardware = models_sub.add_parser("hardware", help="Inspect system hardware and recommended model tier")
+    hardware.set_defaults(func=cmd_models_hardware)
+
+    models_list = models_sub.add_parser("list", help="List registered local models")
+    models_list.set_defaults(func=cmd_models_list)
+
+    setup_m = models_sub.add_parser("setup", help="Configure and pull local Gemma models with hardware tiering")
+    setup_m.add_argument("--model", default=None, help="Target model to install or register (e.g. gemma-4-e2b, gemma-4-e4b, gemma-4-12b)")
+    setup_m.add_argument("--model-path", default=None, help="Register an existing local model file without downloading")
+    setup_m.add_argument("--yes", action="store_true", help="Accept consent prompt non-interactively")
+    setup_m.add_argument("--dry-run", action="store_true", help="Display recommendation and catalog without downloading")
+    setup_m.set_defaults(func=cmd_models_setup)
+
+    remove_m = models_sub.add_parser("remove", help="Remove a locally registered model")
+    remove_m.add_argument("name", help="Name of model to remove")
+    remove_m.set_defaults(func=cmd_models_remove)
 
     tools = sub.add_parser("tools", help="Inspect external tools")
     tools_sub = tools.add_subparsers(dest="tools_command", required=True)
@@ -157,12 +216,33 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--output-dir", default=None)
     validate.set_defaults(func=cmd_validate)
 
-    export = sub.add_parser("export", help="Convert a dataset to another format")
-    export.add_argument("input")
-    export.add_argument("--to", required=True, choices=FORMATS)
-    export.add_argument("--out", default=None)
+    export = sub.add_parser("export", help="Convert a dataset to another format and training schema",
+                            epilog=EXPORT_EXAMPLES, formatter_class=argparse.RawDescriptionHelpFormatter)
+    export.add_argument("input", help="Dataset file (.jsonl, .json, .csv, .tsv)")
+    export.add_argument("--to", required=True, choices=FORMATS, help="Storage format")
+    export.add_argument("--schema", default=None, choices=sorted(SCHEMAS),
+                        help="Training schema (openai-chat, sharegpt, alpaca, chatml, vertex-gemini, dpo, text, saara)")
+    export.add_argument("--split", default=None, help="Deterministic splits, e.g. train=0.9,val=0.05,test=0.05")
+    export.add_argument("--group-by", default=None, help="Field (dot path) that keeps related rows in one split")
+    export.add_argument("--shard-size", type=int, default=None, help="Max rows per output file")
+    export.add_argument("--compress", default=None, choices=["gzip"])
+    export.add_argument("--name", default=None, help="Dataset name used for shard files and the dataset card")
+    export.add_argument("--seed", type=int, default=0)
+    export.add_argument("--strict", action="store_true", help="Fail instead of dropping rows the schema cannot hold")
+    export.add_argument("--out", default=None, help="Output file, or output directory when using engine options")
     export.add_argument("--output-dir", default=None)
     export.set_defaults(func=cmd_export)
+
+    ingest = sub.add_parser("ingest", help="Ingest documents into structured chunks")
+    ingest_sub = ingest.add_subparsers(dest="ingest_command", required=True)
+    ingest_pdf = ingest_sub.add_parser("pdf", help="Ingest a PDF with Docling and Gemma Vision OCR fallback")
+    ingest_pdf.add_argument("path", help="PDF file or directory")
+    ingest_pdf.add_argument("--out", default=None, help="Output JSONL chunk file path")
+    ingest_pdf.add_argument("--output-dir", default=None, help="Directory to store ingested chunks")
+    ingest_pdf.add_argument("--min-text-chars", type=int, default=40, help="Minimum characters threshold before vision fallback")
+    ingest_pdf.add_argument("--no-vision", action="store_true", help="Disable vision model fallback")
+    add_provider_args(ingest_pdf)
+    ingest_pdf.set_defaults(func=cmd_ingest_pdf)
 
     run = sub.add_parser("run", help="Run a workflow config")
     run.add_argument("config")
@@ -174,7 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def add_provider_args(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("Model Provider Settings")
-    group.add_argument("--provider", default="mock", choices=["mock", "ollama", "vllm", "openai-compatible"])
+    group.add_argument("--provider", default="mock", choices=["mock", "ollama", "vllm", "openai-compatible", "gemini"])
     group.add_argument("--model", default=None)
     group.add_argument("--base-url", default=None)
     group.add_argument("--api-key", default=None)
@@ -227,6 +307,133 @@ def cmd_models_health(args: argparse.Namespace) -> None:
     with spinner("Checking model provider"):
         payload = provider.health()
     console.print_json(data=payload)
+
+
+def cmd_models_hardware(args: argparse.Namespace) -> None:
+    profile = HardwareDetector.detect()
+    table = Table(title="Hardware Profile & Tier Recommendation", border_style="cyan")
+    table.add_column("Component", style="bold")
+    table.add_column("Detected Value", style="green")
+    table.add_column("Recommendation / Note")
+
+    table.add_row("System RAM", f"{profile.total_ram_gb} GB (avail: {profile.available_ram_gb} GB)", ">= 8GB recommended for local E4B")
+    table.add_row("NVIDIA VRAM", f"{profile.vram_gb} GB" if profile.has_gpu else "None (CPU only)", "CUDA acceleration" if profile.has_gpu else "CPU inference mode")
+    table.add_row("Free Storage", f"{profile.free_disk_gb} GB", ">= 5GB recommended for GGUF weights")
+
+    tier_map = {
+        "tier_1": "[cyan]Tier 1: Edge (gemma-4-E2B)[/cyan] - Low RAM / CPU-friendly",
+        "tier_2": "[green]Tier 2: Laptop (gemma-4-E4B)[/green] - Balanced performance & speed",
+        "tier_3": "[magenta]Tier 3: Workstation (gemma-4-12B)[/magenta] - High capacity",
+    }
+    table.add_row("Recommended Tier", tier_map.get(profile.recommended_tier, profile.recommended_tier), "Selected based on available RAM/VRAM")
+    console.print(table)
+
+
+def cmd_models_list(args: argparse.Namespace) -> None:
+    manager = ModelManager()
+    models = manager.list_models()
+    if not models:
+        console.print("[yellow]No local models registered yet. Run 'saara models setup' or use '--model-path'.[/yellow]")
+        return
+
+    table = Table(title="Registered Local Models", border_style="cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Size", style="green")
+    table.add_column("Path", style="dim")
+    table.add_column("SHA256 (prefix)")
+
+    for m in models:
+        sha = (m.get("sha256") or "")[:12] + "..." if m.get("sha256") else "N/A"
+        table.add_row(m["name"], f"{m.get('size_gb', '?')} GB", m["path"], sha)
+    console.print(table)
+
+
+def cmd_models_setup(args: argparse.Namespace) -> None:
+    profile = HardwareDetector.detect()
+    manager = ModelManager()
+
+    # If --model-path is provided, register directly with zero download
+    if getattr(args, "model_path", None):
+        target_path = Path(args.model_path)
+        name = getattr(args, "model", None) or target_path.stem
+        with spinner(f"Registering offline model from {target_path.name}"):
+            entry = manager.register_local_model(name, target_path)
+        success_pulse(f"Model '{name}' registered successfully.")
+        console.print_json(data=entry)
+        return
+
+    # Determine recommended or requested model
+    tier_to_model = {
+        "tier_1": "gemma-4-e2b",
+        "tier_2": "gemma-4-e4b",
+        "tier_3": "gemma-4-12b",
+    }
+    model_name = getattr(args, "model", None) or tier_to_model.get(profile.recommended_tier, "gemma-4-e4b")
+    manifest = MODEL_CATALOG.get(model_name)
+    if not manifest:
+        console.print(f"[red]Error: Unknown model '{model_name}'. Available catalog models: {', '.join(MODEL_CATALOG.keys())}[/red]")
+        return
+
+    console.print("\n[bold cyan]Saara Model Setup — Hardware Tiering & Consent Gate[/bold cyan]")
+    console.print(f"• Detected RAM: [bold]{profile.total_ram_gb} GB[/bold] | GPU VRAM: [bold]{profile.vram_gb} GB[/bold] | Free Disk: [bold]{profile.free_disk_gb} GB[/bold]")
+    console.print(f"• Selected Model: [bold green]{manifest.name}[/bold green] ({manifest.parameters})")
+    console.print(f"• Download Footprint: [bold]{manifest.disk_size_gb} GB[/bold] | Minimum RAM: [bold]{manifest.min_ram_gb} GB[/bold]")
+    console.print(f"• License: [bold]{manifest.license}[/bold] (Open weights, permissive commercial & research use)")
+    console.print(f"• Ollama Target: [cyan]{manifest.ollama_tag}[/cyan]")
+
+    if getattr(args, "dry_run", False):
+        console.print("\n[dim]Dry-run mode: No model will be downloaded.[/dim]")
+        return
+
+    # Check explicit consent
+    consent = False
+    if getattr(args, "yes", False):
+        consent = True
+    else:
+        # Interactive prompt
+        console.print("\n[bold yellow]Privacy & Bandwidth Notice:[/bold yellow] Saara never downloads models without your permission.")
+        try:
+            choice = input(f"Do you consent to pulling '{manifest.ollama_tag}' via Ollama? [y/N]: ").strip().lower()
+            consent = (choice == "y" or choice == "yes")
+        except (KeyboardInterrupt, EOFError):
+            consent = False
+
+    if not consent:
+        console.print("\n[yellow]Model download skipped: Consent not granted.[/yellow]")
+        console.print("[dim]Tip: You can use external providers ('--provider openai-compatible' or '--provider mock'), or register an existing file via '--model-path <path>'.[/dim]\n")
+        return
+
+    # Execute pull
+    with spinner(f"Pulling {manifest.ollama_tag} via Ollama"):
+        try:
+            success = manager.pull_ollama_model(manifest.ollama_tag)
+        except Exception as e:
+            console.print(f"[red]Failed to pull model: {e}[/red]")
+            return
+
+    if success:
+        entry = {
+            "name": manifest.name,
+            "path": f"ollama:{manifest.ollama_tag}",
+            "size_gb": manifest.disk_size_gb,
+            "source": "ollama",
+        }
+        models = manager.list_models()
+        models = [m for m in models if m.get("name") != manifest.name]
+        models.append(entry)
+        manager._save_registry(models)
+        success_pulse(f"Model '{manifest.name}' is now active and ready.")
+        console.print_json(data=entry)
+
+
+def cmd_models_remove(args: argparse.Namespace) -> None:
+    manager = ModelManager()
+    removed = manager.remove_model(args.name)
+    if removed:
+        success_pulse(f"Model '{args.name}' removed from local registry.")
+        console.print_json(data={"status": "removed", "name": args.name})
+    else:
+        console.print(f"[yellow]Model '{args.name}' not found in local registry.[/yellow]")
 
 
 def cmd_firecrawl_health(args: argparse.Namespace) -> None:
@@ -342,6 +549,9 @@ def cmd_distill(args: argparse.Namespace) -> None:
 
 
 def cmd_export(args: argparse.Namespace) -> None:
+    if any([args.schema, args.split, args.shard_size, args.compress]):
+        _cmd_export_engine(args)
+        return
     output_path = _resolve_output_path(
         explicit=args.out,
         output_dir=Path(args.output_dir) if args.output_dir else None,
@@ -356,6 +566,79 @@ def cmd_export(args: argparse.Namespace) -> None:
         output = export_examples(rows, output_path, args.to)
     success_pulse("Export complete")
     console.print_json(data={"input": args.input, "output": str(output), "format": args.to, "rows": len(rows)})
+
+
+def cmd_ingest_pdf(args: argparse.Namespace) -> None:
+    pdf_path = Path(args.path).resolve()
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"Path does not exist: {pdf_path}")
+
+    provider = None
+    if not getattr(args, "no_vision", False):
+        provider = create_provider(
+            getattr(args, "provider", "mock"),
+            getattr(args, "model", None),
+            getattr(args, "base_url", None),
+            getattr(args, "api_key", None),
+        )
+
+    config = PDFIngestConfig(
+        min_text_chars=args.min_text_chars,
+        vision_fallback=not getattr(args, "no_vision", False),
+    )
+    ingestor = PDFIngestor(provider=provider, config=config)
+
+    with spinner(f"Ingesting PDF: {pdf_path.name}"):
+        if pdf_path.is_file():
+            chunks = ingestor.ingest(pdf_path)
+        else:
+            pdf_files = sorted(pdf_path.glob("*.pdf"))
+            chunks = ingestor.ingest_batch(pdf_files)
+
+    output_path = _resolve_output_path(
+        explicit=args.out,
+        output_dir=Path(args.output_dir) if args.output_dir else None,
+        subdir="chunks",
+        stem=f"{pdf_path.stem}-chunks",
+        fmt="jsonl",
+    )
+    if output_path is None:
+        output_path = Path(f"{pdf_path.stem}-chunks.jsonl")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
+        for chunk in chunks:
+            f.write(json.dumps(chunk.to_dict()) + "\n")
+
+    success_pulse(f"Ingested {len(chunks)} chunks from {pdf_path.name}")
+    summary: dict[str, Any] = {
+        "source": str(pdf_path),
+        "output": str(output_path),
+        "total_chunks": len(chunks),
+        "extractors": {},
+    }
+    for c in chunks:
+        method = c.metadata.get("extractor", "unknown")
+        summary["extractors"][method] = summary["extractors"].get(method, 0) + 1
+
+    console.print_json(data=summary)
+
+def _cmd_export_engine(args: argparse.Namespace) -> None:
+    name = args.name or _slug(Path(args.input).stem)
+    out_dir = Path(args.out) if args.out else (Path(args.output_dir) / "exports" / name if args.output_dir else None)
+    if out_dir is None:
+        raise ValueError("export requires --out or --output-dir")
+    spec = ExportSpec(
+        fmt=args.to, schema=args.schema or "saara",
+        splits=parse_splits(args.split) if args.split else {"train": 1.0},
+        group_by=args.group_by, shard_size=args.shard_size, compress=args.compress,
+        name=name, seed=args.seed, strict=args.strict,
+    )
+    with spinner(f"Exporting {spec.schema} as {spec.fmt}"):
+        manifest = export_dataset(load_rows(args.input), out_dir, spec)
+    success_pulse("Export complete")
+    console.print_json(data={k: manifest[k] for k in ("schema", "format", "rows_in", "rows_out", "counts", "dropped",
+                                                     "group_leakage")} | {"out_dir": str(out_dir)})
 
 
 def cmd_run(args: argparse.Namespace) -> None:

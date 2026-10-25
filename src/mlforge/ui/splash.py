@@ -4,8 +4,6 @@ import sys
 import time
 
 from rich.align import Align
-from rich.console import Console
-from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TextColumn
 from rich.text import Text
 
@@ -73,7 +71,7 @@ def _print_getting_started() -> None:
     
     getting_started = Text("Get started\n", style="bold white")
     for cmd in commands:
-        getting_started.append(f"$ ", style="dim")
+        getting_started.append("$ ", style="dim")
         getting_started.append(f"{cmd}\n", style="command")
     
     console.print(Align.center(getting_started))

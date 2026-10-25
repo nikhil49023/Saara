@@ -1,0 +1,12 @@
+transformers==5.20.2
+peft==0.21.2
+datasets==5.1.0
+accelerate==1.15.0
+huggingface_hub[hf_xet]
+pymupdf
+datasketch==2.0.0
+rapidfuzz==3.14.6
+pyarrow
+pillow
+tensorboard
+pytest

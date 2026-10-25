@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import time
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
-
-from rich.console import Console
-from rich.status import Status
 
 from .theme import console
 
@@ -37,5 +33,5 @@ def spinner(message: str) -> Iterator[None]:
         yield
         return
 
-    with console.status(f"[info]{message}...[/]", spinner="dots") as status:
+    with console.status(f"[info]{message}...[/]", spinner="dots"):
         yield

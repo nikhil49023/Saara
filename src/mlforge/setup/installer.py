@@ -5,9 +5,9 @@ import platform
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from .doctor import DependencyCheck, doctor_checks
 
@@ -72,6 +72,17 @@ TASKS = {
             "configuration and environment variables."
         ),
         command_factory=_empty_commands,
+    ),
+    "model": SetupTask(
+        name="model",
+        title="Local model setup (with explicit consent & hardware tiering)",
+        check_name="model",
+        install_url="https://ai.google.dev/gemma",
+        note=(
+            "Configures local Gemma models with hardware tiering check. "
+            "Requires explicit consent before downloading any weights."
+        ),
+        command_factory=lambda: [SetupCommand(["saara", "models", "setup"], "Run interactive hardware-tiered model setup")],
     ),
     "data": SetupTask(
         name="data",
@@ -231,7 +242,7 @@ def _run_task(
         print(f"Command: {printable}")
         if dry_run:
             continue
-        if not yes and not _confirm(input_func, f"Run this command? [y/N]: "):
+        if not yes and not _confirm(input_func, "Run this command? [y/N]: "):
             return {"target": task.name, "status": "skipped"}
         subprocess.run(command.command, shell=command.shell, check=True)
     return {"target": task.name, "status": "installed" if not dry_run else "dry-run"}

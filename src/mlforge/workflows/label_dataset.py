@@ -10,7 +10,6 @@ from mlforge.datasets.exporters import export_examples
 from mlforge.datasets.io import load_rows
 from mlforge.providers.base import ModelRequest
 
-
 LABEL_SYSTEM_PROMPT = "You label dataset examples. Return only valid JSON."
 LABEL_PROMPT_TEMPLATE = """Classify this dataset example.
 Allowed labels: {labels}

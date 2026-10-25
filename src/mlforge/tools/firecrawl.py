@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
-from urllib import error, request as urlrequest
+from urllib import error
+from urllib import request as urlrequest
 
 
 @dataclass(slots=True)

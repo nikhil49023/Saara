@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -34,12 +33,13 @@ def test_splash_command() -> None:
 
 
 def test_wizard_can_exit() -> None:
-    result = run_cli("wizard", input_text="6\n")
+    result = run_cli("wizard", input_text="7\n")
 
     assert "Saara Interactive" in result.stdout
     assert "1. Generate topic dataset" in result.stdout
-    assert "4. Run workflow config" in result.stdout
-    assert "5. Other" in result.stdout
+    assert "4. Configure Local Gemma Model" in result.stdout
+    assert "5. Run workflow config" in result.stdout
+    assert "6. Other" in result.stdout
     assert "Initialize workspace" not in result.stdout
     assert "Saara closed." in result.stdout
 
