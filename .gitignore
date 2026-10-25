@@ -10,3 +10,5 @@ build/
 *.egg-info/
 .code-review-graph/
 .claude-flow/
+examples/**/runs/
+examples/**/data/*.pdf
