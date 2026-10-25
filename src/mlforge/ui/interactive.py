@@ -32,9 +32,10 @@ def launch_interactive() -> None:
         print("1. Generate topic dataset")
         print("2. Label dataset")
         print("3. Distill dataset")
-        print("4. Run workflow config")
-        print("5. Other")
-        print("6. Exit")
+        print("4. Configure Local Gemma Model (Hardware Tiering)")
+        print("5. Run workflow config")
+        print("6. Other")
+        print("7. Exit")
         choice = prompt("Choose", "1").strip()
         try:
             if choice == "1":
@@ -44,10 +45,12 @@ def launch_interactive() -> None:
             elif choice == "3":
                 action_distill()
             elif choice == "4":
-                action_run(root)
+                action_model_setup()
             elif choice == "5":
+                action_run(root)
+            elif choice == "6":
                 root = launch_other_menu(root)
-            elif choice in {"6", "13"} or choice.lower() in {"q", "quit", "exit"}:
+            elif choice in {"7", "13"} or choice.lower() in {"q", "quit", "exit"}:
                 print("Saara closed.")
                 return
             else:
@@ -122,6 +125,78 @@ def action_model_health() -> None:
     with spinner("Checking model provider"):
         result = provider.health()
     print_json(result)
+
+
+def action_model_setup() -> None:
+    from mlforge.setup.model import HardwareDetector, MODEL_CATALOG, ModelManager
+
+    profile = HardwareDetector.detect()
+    print(f"\nHardware Profile:")
+    print(f"• System RAM: {profile.total_ram_gb} GB (available: {profile.available_ram_gb} GB)")
+    print(f"• GPU VRAM: {profile.vram_gb} GB" if profile.has_gpu else "• GPU: None (CPU inference mode)")
+    print(f"• Free Storage: {profile.free_disk_gb} GB")
+    print(f"• Recommended Tier: {profile.recommended_tier}\n")
+
+    print("Available Gemma Models:")
+    models_list = list(MODEL_CATALOG.keys())
+    for idx, key in enumerate(models_list, 1):
+        m = MODEL_CATALOG[key]
+        print(f"  {idx}. {m.name} ({m.parameters}) — {m.disk_size_gb} GB [License: {m.license}]")
+    print("  0. Register existing local model path (zero download)")
+
+    choice = prompt("Choose model to configure", "1").strip()
+    manager = ModelManager()
+
+    if choice == "0":
+        path_str = prompt("Enter path to existing GGUF/checkpoint file").strip()
+        p = Path(path_str).expanduser()
+        if not p.is_file():
+            print(f"Error: File not found at {p}")
+            return
+        entry = manager.register_local_model(p.stem, p)
+        success_pulse(f"Model '{p.stem}' registered successfully.")
+        print_json(entry)
+        return
+
+    try:
+        idx = int(choice) - 1
+        selected_key = models_list[idx]
+        manifest = MODEL_CATALOG[selected_key]
+    except (ValueError, IndexError):
+        print("Invalid selection.")
+        return
+
+    print(f"\nSelected: {manifest.name} ({manifest.parameters})")
+    print(f"License: {manifest.license}")
+    print(f"Download size: {manifest.disk_size_gb} GB via Ollama tag '{manifest.ollama_tag}'")
+    print("\nPrivacy Guarantee: Saara NEVER downloads models without your permission.")
+    consent = prompt(f"Do you consent to pulling '{manifest.ollama_tag}' via Ollama? (y/n)", "n").strip().lower()
+
+    if consent not in {"y", "yes"}:
+        print("Download cancelled: Consent not granted.")
+        print("You can continue using external providers or register a local model file.")
+        return
+
+    with spinner(f"Pulling {manifest.ollama_tag} via Ollama"):
+        try:
+            success = manager.pull_ollama_model(manifest.ollama_tag)
+        except Exception as e:
+            print(f"Failed to pull model: {e}")
+            return
+
+    if success:
+        entry = {
+            "name": manifest.name,
+            "path": f"ollama:{manifest.ollama_tag}",
+            "size_gb": manifest.disk_size_gb,
+            "source": "ollama",
+        }
+        models = manager.list_models()
+        models = [m for m in models if m.get("name") != manifest.name]
+        models.append(entry)
+        manager._save_registry(models)
+        success_pulse(f"Model '{manifest.name}' is now active and ready.")
+        print_json(entry)
 
 
 def action_doctor() -> None:
