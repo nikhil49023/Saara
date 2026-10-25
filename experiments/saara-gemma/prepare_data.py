@@ -26,6 +26,7 @@ from clutter import add_clutter
 from prompts import CLEAN_USER, OCR_USER, PROMPT_VERSION, SYSTEM
 
 SEED = 20261025
+MAX_SIDE = 2048
 RENDER_DPI = 150  # must equal mlforge.ingest.pdf PDFIngestConfig.dpi (train/inference parity)
 LICENSES = {
     "allenai/olmOCR-mix-1025": "odc-by",
@@ -41,8 +42,8 @@ LICENSES = {
 OCR_PLAN = {
     "00_documents": (2000, 1, 200, 0.3),
     "01_books": (1500, 1, 200, 0.3),
-    "02_loc_transcripts": (2500, 2, 98, 0.5),
-    "03_national_archives": (2500, 4, 169, 0.5),
+    "02_loc_transcripts": (1000, 1, 98, 0.5),
+    "03_national_archives": (1000, 2, 169, 0.5),
 }
 DEFAULT_CAPS = {"post_ocr": 3500, "clutter": 2500, "toucan": 6000, "hermes": 1500, "when2call": 1500,
                 "when2call_test": 400, "replay": 1500, "noisy_test_share": 0.5}
@@ -83,6 +84,22 @@ def _strip_think(text: str) -> str:
     return re.sub(r"<think>.*?</think>\s*", "", text or "", flags=re.S).strip()
 
 
+def render_page(pdf_bytes: bytes, page_number: int):
+    """Render like Saara's runtime (PyMuPDF at RENDER_DPI), but cap the longest side at MAX_SIDE px.
+    Oversized scans (LoC pages reach 5555x7072 at 150 DPI) are shrunk by Gemma's image processor to the
+    1120-token budget anyway, so the cap changes cost, not what the model sees."""
+    import fitz
+    from PIL import Image
+
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        # olmOCR tarballs hold single-page extracts; page_number refers to the source document.
+        page = doc[0 if len(doc) == 1 else page_number - 1]
+        longest_pt = max(page.rect.width, page.rect.height)
+        dpi = min(RENDER_DPI, MAX_SIDE * 72 / longest_pt)
+        pix = page.get_pixmap(dpi=dpi)
+        return Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+
 # ---------- OCR: olmOCR-mix-1025 (+ degraded copies) ----------
 
 def _ocr_row(rid, source, record, rel, split, group, meta) -> dict:
@@ -100,7 +117,6 @@ def _ocr_row(rid, source, record, rel, split, group, meta) -> dict:
 
 
 def build_ocr(out: Path, plan: dict, noisy_share: float) -> list[dict]:
-    import fitz  # PyMuPDF: same renderer as Saara's runtime (mlforge.ingest.pdf)
     import pyarrow.parquet as pq
     from huggingface_hub import HfApi
     from PIL import Image
@@ -135,17 +151,18 @@ def build_ocr(out: Path, plan: dict, noisy_share: float) -> list[dict]:
                         record = members.get(info.name)
                         if record is None:
                             continue
-                        try:
-                            with fitz.open(stream=archive.extractfile(info).read(), filetype="pdf") as doc:
-                                pix = doc[int(record["page_number"]) - 1].get_pixmap(dpi=RENDER_DPI)
-                                image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
-                        except Exception:  # corrupt PDFs are dropped, not fatal
-                            drops["ocr_render_failed"] += 1
-                            continue
                         stem = record["id"].replace("/", "_")
                         rel = Path("images/ocr") / source / f"{stem}.png"
                         (out / rel).parent.mkdir(parents=True, exist_ok=True)
-                        image.save(out / rel)
+                        if (out / rel).exists():  # resume: reuse pages rendered by an earlier run
+                            image = Image.open(out / rel).convert("RGB")
+                        else:
+                            try:
+                                image = render_page(archive.extractfile(info).read(), int(record["page_number"]))
+                            except Exception:  # corrupt PDFs are dropped, not fatal
+                                drops["ocr_render_failed"] += 1
+                                continue
+                            image.save(out / rel, compress_level=1)
                         doc = record["id"].rsplit("-", 1)[0]
                         group = f"{source}:{doc}"
                         if split_name == "eval":
@@ -158,7 +175,7 @@ def build_ocr(out: Path, plan: dict, noisy_share: float) -> list[dict]:
                         if split != "val" and random.Random(seed_of(base_id)).random() < share:
                             noisy, ops = degrade(image, seed_of(base_id + ":aug"))
                             noisy_rel = rel.with_name(f"{stem}.noisy.png")
-                            noisy.save(out / noisy_rel)
+                            noisy.save(out / noisy_rel, compress_level=1)
                             row = _ocr_row(base_id + ":noisy", source, record, noisy_rel, split, group, {"degraded": ops})
                             row["derived_from"] = base_id
                             rows.append(row)
