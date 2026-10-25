@@ -42,8 +42,8 @@ LICENSES = {
 OCR_PLAN = {
     "00_documents": (2000, 1, 200, 0.3),
     "01_books": (1500, 1, 200, 0.3),
-    "02_loc_transcripts": (2500, 2, 98, 0.5),
-    "03_national_archives": (2500, 4, 169, 0.5),
+    "02_loc_transcripts": (1000, 1, 98, 0.5),
+    "03_national_archives": (1000, 2, 169, 0.5),
 }
 DEFAULT_CAPS = {"post_ocr": 3500, "clutter": 2500, "toucan": 6000, "hermes": 1500, "when2call": 1500,
                 "when2call_test": 400, "replay": 1500, "noisy_test_share": 0.5}
