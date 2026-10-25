@@ -32,7 +32,15 @@ pip install -e .
 saara splash
 saara wizard
 saara init
-saara models health --provider ollama --model qwen
+
+# 1. Hardware-tiered model setup (pulled only with your explicit consent)
+saara models hardware
+saara models setup
+
+# 2. PDF & Document ingestion (with Docling and Gemma Vision OCR fallback)
+saara ingest pdf path/to/document.pdf --out chunks.jsonl
+
+# 3. Generate dataset from topic or bounded documents
 saara generate topic "robotics motion planning" --samples 20 --provider mock --format jsonl --output-dir runs/robotics
 saara label .mlforge/datasets/robotics-motion-planning.jsonl --labels useful,not-useful --out labeled.jsonl
 saara distill labeled.jsonl --method sft --out distilled.jsonl
@@ -96,6 +104,42 @@ For an isolated user-level install, use `pipx` once this project is published or
 ```bash
 pipx install .
 ```
+
+## Model Distribution & Privacy Guarantee
+
+Saara **never bundles model weights** and **never pulls models automatically**.
+Models are pulled only with your explicit permission:
+
+- Run `saara models hardware` to view detected RAM, GPU VRAM, and storage.
+- Run `saara models setup` to select an **Apache 2.0 Gemma model** (`gemma-4-e2b`, `gemma-4-e4b`, `gemma-4-12b`) tailored to your system tier:
+  - **Tier 1 (Edge / CPU)**: `gemma-4-e2b` (~1.6 GB disk, 4 GB RAM)
+  - **Tier 2 (Laptop / Workstation)**: `gemma-4-e4b` (~2.9 GB disk, 8 GB RAM)
+  - **Tier 3 (GPU Server / Workstation)**: `gemma-4-12b` (~7.8 GB disk, 16 GB RAM)
+- Use `--yes` for non-interactive / CI automation.
+- For air-gapped / offline environments with existing GGUF checkpoints, use:
+  ```bash
+  saara models setup --model-path /path/to/model.gguf --model my-local-gemma
+  ```
+- To reclaim storage, remove any local model with:
+  ```bash
+  saara models remove gemma-4-e2b
+  ```
+
+## Document Ingestion (Docling + Gemma 4 Vision)
+
+Ingest complex PDFs, research papers, and financial invoices into structured chunks:
+
+```bash
+# Ingest single PDF with Docling layout parsing & Gemma Vision OCR fallback
+saara ingest pdf invoice.pdf --out invoice_chunks.jsonl
+
+# Ingest an entire directory of PDFs
+saara ingest pdf ./documents/ --output-dir ./runs/ingested
+```
+
+- High-density text pages use fast semantic parsing.
+- Scanned, sparse, or handwritten pages automatically trigger Gemma 4 Vision OCR.
+- Disable vision fallback with `--no-vision` for pure digital PDFs.
 
 ## Firecrawl Local
 
