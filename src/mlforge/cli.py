@@ -13,6 +13,7 @@ from mlforge.core.artifacts import ArtifactStore
 from mlforge.datasets.exporters import export_examples
 from mlforge.datasets.io import load_rows
 from mlforge.datasets.validators import validate_dataset
+from mlforge.ingest.pdf import PDFIngestor, PDFIngestConfig
 from mlforge.providers.factory import create_provider
 from mlforge.setup.doctor import doctor_checks
 from mlforge.setup.installer import run_setup, TASKS
@@ -163,6 +164,17 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("--out", default=None)
     export.add_argument("--output-dir", default=None)
     export.set_defaults(func=cmd_export)
+
+    ingest = sub.add_parser("ingest", help="Ingest documents into structured chunks")
+    ingest_sub = ingest.add_subparsers(dest="ingest_command", required=True)
+    ingest_pdf = ingest_sub.add_parser("pdf", help="Ingest a PDF with Docling and Gemma Vision OCR fallback")
+    ingest_pdf.add_argument("path", help="PDF file or directory")
+    ingest_pdf.add_argument("--out", default=None, help="Output JSONL chunk file path")
+    ingest_pdf.add_argument("--output-dir", default=None, help="Directory to store ingested chunks")
+    ingest_pdf.add_argument("--min-text-chars", type=int, default=40, help="Minimum characters threshold before vision fallback")
+    ingest_pdf.add_argument("--no-vision", action="store_true", help="Disable vision model fallback")
+    add_provider_args(ingest_pdf)
+    ingest_pdf.set_defaults(func=cmd_ingest_pdf)
 
     run = sub.add_parser("run", help="Run a workflow config")
     run.add_argument("config")
@@ -356,6 +368,62 @@ def cmd_export(args: argparse.Namespace) -> None:
         output = export_examples(rows, output_path, args.to)
     success_pulse("Export complete")
     console.print_json(data={"input": args.input, "output": str(output), "format": args.to, "rows": len(rows)})
+
+
+def cmd_ingest_pdf(args: argparse.Namespace) -> None:
+    pdf_path = Path(args.path).resolve()
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"Path does not exist: {pdf_path}")
+
+    provider = None
+    if not getattr(args, "no_vision", False):
+        provider = create_provider(
+            getattr(args, "provider", "mock"),
+            getattr(args, "model", None),
+            getattr(args, "base_url", None),
+            getattr(args, "api_key", None),
+        )
+
+    config = PDFIngestConfig(
+        min_text_chars=args.min_text_chars,
+        vision_fallback=not getattr(args, "no_vision", False),
+    )
+    ingestor = PDFIngestor(provider=provider, config=config)
+
+    with spinner(f"Ingesting PDF: {pdf_path.name}"):
+        if pdf_path.is_file():
+            chunks = ingestor.ingest(pdf_path)
+        else:
+            pdf_files = sorted(pdf_path.glob("*.pdf"))
+            chunks = ingestor.ingest_batch(pdf_files)
+
+    output_path = _resolve_output_path(
+        explicit=args.out,
+        output_dir=Path(args.output_dir) if args.output_dir else None,
+        subdir="chunks",
+        stem=f"{pdf_path.stem}-chunks",
+        fmt="jsonl",
+    )
+    if output_path is None:
+        output_path = Path(f"{pdf_path.stem}-chunks.jsonl")
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
+        for chunk in chunks:
+            f.write(json.dumps(chunk.to_dict()) + "\n")
+
+    success_pulse(f"Ingested {len(chunks)} chunks from {pdf_path.name}")
+    summary: dict[str, Any] = {
+        "source": str(pdf_path),
+        "output": str(output_path),
+        "total_chunks": len(chunks),
+        "extractors": {},
+    }
+    for c in chunks:
+        method = c.metadata.get("extractor", "unknown")
+        summary["extractors"][method] = summary["extractors"].get(method, 0) + 1
+
+    console.print_json(data=summary)
 
 
 def cmd_run(args: argparse.Namespace) -> None:

@@ -8,3 +8,5 @@ dist/
 dist-pypi/
 build/
 *.egg-info/
+.code-review-graph/
+.claude-flow/
