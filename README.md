@@ -150,7 +150,7 @@ See [docs/saara-gemma.md](docs/saara-gemma.md).
 
 ## Contributing
 
-Contributions are welcome, including for **Hacktoberfest**. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
+Contributions are welcome, including during **Hacktoberfest 2026**. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
 then pick an issue labelled `good first issue` or `hacktoberfest`. Please follow the
 [Code of Conduct](CODE_OF_CONDUCT.md).
 

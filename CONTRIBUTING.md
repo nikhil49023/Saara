@@ -1,13 +1,16 @@
 # Contributing to Saara
 
 Thanks for helping make Saara better. Contributions of every size are welcome: docs, tests, bug fixes,
-new export schemas, providers and workflows. Saara takes part in **Hacktoberfest**: pull requests that are
-merged, or labelled `hacktoberfest-accepted`, count toward your total.
+new export schemas, providers and workflows. Saara is built for **Hacktoberfest 2026** ("AI belongs to
+everyone": building with open-weight models and open-source AI). Note that in 2026 pull requests no longer
+count toward Hacktoberfest rewards; contribute because you want to build with us. Issues labelled
+`hacktoberfest` are scoped so they can be finished during the event.
 
 ## Ground rules
 - Be kind. All participation follows the [Code of Conduct](CODE_OF_CONDUCT.md).
-- One focused change per pull request. Spam, low-effort or auto-generated PRs (for example whitespace-only
-  edits or mass README tweaks) are closed and labelled `invalid` / `spam`, per Hacktoberfest rules.
+- One focused change per pull request. Spam, low-effort or bulk AI-generated PRs (for example
+  whitespace-only edits or mass README tweaks) are closed and labelled `spam`. If an AI assistant helped you,
+  say so in the PR and make sure you understand and have tested every line.
 - Saara is **general purpose and local-first**: features should work offline with `--provider mock`, and
   must never download models or data without the user's explicit consent.
 
