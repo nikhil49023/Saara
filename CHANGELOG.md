@@ -5,6 +5,18 @@ All notable changes to Saara are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-10-25
+
+### Fixed
+- `--provider ollama` now sends page images, so local Gemma 4 vision OCR works in `saara ingest pdf`
+  (previously only `--provider gemini` did). End-to-end tests cover both providers.
+- Model catalog download sizes now match the Ollama `gemma4` images (E2B ~4.6 GB, E4B ~6.6 GB, 12B ~8.0 GB);
+  RAM guidance and hardware tiers updated to match.
+- Docs no longer imply saara-gemma has been trained: it is a pipeline, tested only on a tiny random-weight
+  model with Gemma 4's architecture (`experiments/saara-gemma/make_tiny_gemma4.py` is now in the repo).
+- Model setup records a registered file's SHA-256; it does not verify downloads against known hashes (docs corrected).
+- OCR prompt and test fixtures are now domain-neutral.
+
 ## [1.8.0] - 2026-10-25 (Hacktoberfest 2026)
 
 Version 1.7.0 was already used by the earlier SAARA Desktop GitHub release, so this release is 1.8.0.
@@ -18,7 +30,7 @@ Version 1.7.0 was already used by the earlier SAARA Desktop GitHub release, so t
 - **PDF ingestion**: `saara ingest pdf` with Docling layout parsing, PyMuPDF text extraction and a Gemma 4 vision
   OCR fallback for scanned or sparse pages.
 - **Local model setup**: `saara models hardware|setup|list|remove` with hardware tiering (Gemma 4 E2B / E4B / 12B),
-  an explicit consent gate before any download, SHA-256 verification and offline `--model-path` registration.
+  an explicit consent gate before any download, and offline `--model-path` registration that records the file's SHA-256.
 - Wizard step for local model setup.
 - `--provider gemini`: hosted Gemma 4 / Gemini through the official `google-genai` SDK, with image parts for
   vision OCR and Gemma 4 thinking level (`pip install 'saara-ai[gemini]'`).

@@ -49,8 +49,8 @@ MODEL_CATALOG: dict[str, ModelManifest] = {
         tier="tier_1",
         parameters="E2B (Effective 2 Billion)",
         license="Apache 2.0",
-        disk_size_gb=1.6,
-        min_ram_gb=4.0,
+        disk_size_gb=4.6,
+        min_ram_gb=8.0,
         ollama_tag="gemma4:e2b",
         hf_repo="google/gemma-4-e2b-it-GGUF",
         hf_filename="gemma-4-e2b-it-Q4_K_M.gguf",
@@ -62,8 +62,8 @@ MODEL_CATALOG: dict[str, ModelManifest] = {
         tier="tier_2",
         parameters="E4B (Effective 4 Billion)",
         license="Apache 2.0",
-        disk_size_gb=2.9,
-        min_ram_gb=8.0,
+        disk_size_gb=6.6,
+        min_ram_gb=12.0,
         ollama_tag="gemma4:e4b",
         hf_repo="google/gemma-4-e4b-it-GGUF",
         hf_filename="gemma-4-e4b-it-Q4_K_M.gguf",
@@ -75,7 +75,7 @@ MODEL_CATALOG: dict[str, ModelManifest] = {
         tier="tier_3",
         parameters="12B Dense",
         license="Apache 2.0",
-        disk_size_gb=7.8,
+        disk_size_gb=8.0,
         min_ram_gb=16.0,
         ollama_tag="gemma4:12b",
         hf_repo="google/gemma-4-12b-it-GGUF",
@@ -133,7 +133,7 @@ class HardwareDetector:
         # Determine tier
         if vram_gb >= 12.0 or total_ram >= 24.0:
             tier = "tier_3"
-        elif vram_gb >= 4.0 or total_ram >= 8.0:
+        elif vram_gb >= 8.0 or total_ram >= 12.0:  # E4B weights are ~6.6 GB
             tier = "tier_2"
         else:
             tier = "tier_1"

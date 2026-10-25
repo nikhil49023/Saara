@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image
-
 from clutter import add_clutter, clutter_left
 from metrics import parse_tool_calls, score_row, tool_call_scores
+from PIL import Image
 from prompts import CLEAN_USER, OCR_USER, SYSTEM
 
 TINY = os.environ.get("TINY_GEMMA4")
@@ -66,9 +65,8 @@ def test_scores_are_in_range():
 
 @needs_tiny
 def test_labels_cover_only_assistant_tokens(tmp_path):
-    from transformers import AutoProcessor
-
     from train import Collator, load_rows, set_image_budget
+    from transformers import AutoProcessor
 
     rows = _rows(tmp_path)
     (tmp_path / "train.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
@@ -81,7 +79,7 @@ def test_labels_cover_only_assistant_tokens(tmp_path):
         batch = collator([row])
         labels = batch["labels"][0]
         learned = tok.decode([t for t in labels.tolist() if t != -100])
-        prompt_side = tok.decode([t for t, l in zip(batch["input_ids"][0].tolist(), labels.tolist()) if l == -100])
+        prompt_side = tok.decode([t for t, lab in zip(batch["input_ids"][0].tolist(), labels.tolist()) if lab == -100])
         print(row["id"], "LEARNED:", repr(learned))
         assert "TOOL_RESULT_SECRET" not in learned
         assert SYSTEM[row["skill"]][:30] not in learned and SYSTEM[row["skill"]][:30] in prompt_side

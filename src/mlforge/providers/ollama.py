@@ -30,6 +30,9 @@ class OllamaProvider:
         }
         if request.max_tokens:
             payload["options"]["num_predict"] = request.max_tokens
+        images = request.metadata.get("images") if request.metadata else None
+        if images:  # base64 page images for vision models such as Gemma 4 (used by `saara ingest pdf`)
+            payload["images"] = list(images)
         raw = self._post("/api/generate", payload)
         return ModelResponse(
             text=str(raw.get("response", "")),

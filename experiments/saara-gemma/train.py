@@ -24,6 +24,7 @@ from pathlib import Path
 import torch
 from PIL import Image
 
+
 def _has(module: str) -> bool:
     import importlib.util
 
@@ -202,12 +203,17 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=20261025)
     args = parser.parse_args()
 
-    from peft import LoraConfig, get_peft_model
-    from transformers import (AutoModelForMultimodalLM, AutoProcessor, EarlyStoppingCallback, Trainer,
-                              TrainingArguments, set_seed)
-
     from evaluate import generate_outputs
     from metrics import score_row
+    from peft import LoraConfig, get_peft_model
+    from transformers import (
+        AutoModelForMultimodalLM,
+        AutoProcessor,
+        EarlyStoppingCallback,
+        Trainer,
+        TrainingArguments,
+        set_seed,
+    )
 
     set_seed(args.seed)
     args.out.mkdir(parents=True, exist_ok=True)

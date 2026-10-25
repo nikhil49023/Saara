@@ -144,9 +144,8 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=3072)
     args = parser.parse_args()
 
-    from transformers import AutoProcessor
-
     from train import load_rows, set_image_budget
+    from transformers import AutoProcessor
 
     rows = load_rows(args.data / "test.jsonl", args.data)
     if args.limit:
