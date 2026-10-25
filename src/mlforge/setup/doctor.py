@@ -50,7 +50,24 @@ def doctor_checks(firecrawl_url: str = "http://localhost:3002") -> list[Dependen
             install_url="https://huggingface.co/docs/datasets/installation",
             command="pip install 'saara-ai[data]'",
         ),
+        _model_check(),
     ]
+
+
+def _model_check() -> DependencyCheck:
+    from mlforge.setup.model import ModelManager
+
+    manager = ModelManager()
+    models = manager.list_models()
+    count = len(models)
+    return DependencyCheck(
+        name="local-model",
+        ok=count > 0,
+        required=False,
+        detail=f"{count} local model(s) registered" if count > 0 else "none registered (run 'saara models setup')",
+        install_url="https://ai.google.dev/gemma",
+        command="saara models setup",
+    )
 
 
 def _python_check() -> DependencyCheck:
