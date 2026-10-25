@@ -1,11 +1,12 @@
-# saara-gemma: training process
+# saara-gemma: training plan and pipeline
 
-`saara-gemma` is a fine-tune of **Gemma 4 E4B** (`google/gemma-4-E4B-it`, Apache 2.0) built to be Saara's
+`saara-gemma` is a **planned** fine-tune of **Gemma 4 E4B** (`google/gemma-4-E4B-it`, Apache 2.0) built to be Saara's
 default local model. This page documents the full process. Numbers for a specific release are generated
 automatically by `report.py` into `MODEL_CARD.md` and `TRAINING_REPORT.md`; nothing is typed in by hand.
 
-> **Status (v1.8.0):** the pipeline is built and tested end to end on a reduced-size Gemma 4 with the same
-> architecture. The first full training run is scheduled; no saara-gemma weights have been released yet.
+> **Status: NOT TRAINED.** No saara-gemma model has been trained, evaluated or released. The pipeline is built and
+> tested end to end only on a tiny random-weight model with Gemma 4's architecture (`make_tiny_gemma4.py`).
+> No real-model training run has happened, so there are no results yet.
 > Until a release passes the gate below, Saara keeps using base Gemma 4 models.
 
 ## Goal: three skills Saara needs

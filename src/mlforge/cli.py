@@ -316,9 +316,9 @@ def cmd_models_hardware(args: argparse.Namespace) -> None:
     table.add_column("Detected Value", style="green")
     table.add_column("Recommendation / Note")
 
-    table.add_row("System RAM", f"{profile.total_ram_gb} GB (avail: {profile.available_ram_gb} GB)", ">= 8GB recommended for local E4B")
+    table.add_row("System RAM", f"{profile.total_ram_gb} GB (avail: {profile.available_ram_gb} GB)", ">= 12GB recommended for local E4B")
     table.add_row("NVIDIA VRAM", f"{profile.vram_gb} GB" if profile.has_gpu else "None (CPU only)", "CUDA acceleration" if profile.has_gpu else "CPU inference mode")
-    table.add_row("Free Storage", f"{profile.free_disk_gb} GB", ">= 5GB recommended for GGUF weights")
+    table.add_row("Free Storage", f"{profile.free_disk_gb} GB", ">= 10GB free recommended for Gemma 4 weights")
 
     tier_map = {
         "tier_1": "[cyan]Tier 1: Edge (gemma-4-E2B)[/cyan] - Low RAM / CPU-friendly",

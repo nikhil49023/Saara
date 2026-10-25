@@ -21,7 +21,7 @@ fine-tuning tools expect, all on your own machine with local models such as Gemm
 - [Features](#features)
 - [Exporting for training tools](#exporting-for-training-tools)
 - [Local models and privacy](#local-models-and-privacy)
-- [saara-gemma: Saara's own fine-tuned model](#saara-gemma-saaras-own-fine-tuned-model)
+- [saara-gemma (planned, not trained yet)](#saara-gemma-planned-not-trained-yet)
 - [Documentation](#documentation)
 - [Contributing (Hacktoberfest welcome)](#contributing)
 
@@ -122,31 +122,40 @@ saara models remove gemma-4-e4b
 
 | Tier | Model | Download | RAM |
 |---|---|---|---|
-| Edge / CPU | `gemma-4-e2b` | ~1.6 GB | 4 GB |
-| Laptop | `gemma-4-e4b` | ~2.9 GB | 8 GB |
-| Workstation / GPU | `gemma-4-12b` | ~7.8 GB | 16 GB |
+| Edge / CPU | `gemma-4-e2b` | ~4.6 GB | 8 GB |
+| Laptop | `gemma-4-e4b` | ~6.6 GB | 12 GB |
+| Workstation / GPU | `gemma-4-12b` | ~8.0 GB | 16 GB |
+
+Download sizes are the Ollama `gemma4` images (weights plus vision and audio encoders).
 
 Providers: `mock` (offline, deterministic), `ollama` (`http://localhost:11434`), `vllm` and
 `openai-compatible` (default `http://localhost:8000/v1`), and `gemini` for hosted Gemma 4 through the Gemini API
 (`pip install 'saara-ai[gemini]'`, set `GEMINI_API_KEY`; default model `gemma-4-26b-a4b-it`, supports page images for OCR). Use `--yes` for non-interactive setup in CI.
 
-## saara-gemma: Saara's own fine-tuned model
+## saara-gemma (planned, not trained yet)
 
-`experiments/saara-gemma/` contains a production-style pipeline to fine-tune **Gemma 4 E4B** for
-Saara's core skills: document OCR (including historical and degraded scans), cleaning noisy text,
-and multi-step tool workflows. It uses **public datasets only**: olmOCR-mix, Post-OCR-Correction,
-fineweb-edu, Toucan-1.5M, When2Call, Tulu-3.
+> **No saara-gemma model has been trained or released.** Saara uses base Gemma 4 models today.
 
-The pipeline covers group-aware leak-free splits, a contamination guard, assistant-only loss, LoRA
-targets chosen from the loaded architecture, early stopping on a task metric, paired-bootstrap
-evaluation against base Gemma, and an auto-generated model card. It becomes Saara's default model only
-if it beats base Gemma on every skill. **Status: pipeline built and tested; the training run is scheduled.**
+`experiments/saara-gemma/` contains the pipeline we will use to fine-tune **Gemma 4 E4B** for Saara's core
+skills: document OCR (including historical and degraded scans), cleaning noisy text, and multi-step tool
+workflows. It uses **public datasets only**: olmOCR-mix, Post-OCR-Correction, fineweb-edu, Toucan-1.5M,
+hermes-function-calling, When2Call, Tulu-3.
+
+**What exists today:**
+- data preparation with group-aware, leak-free splits and a contamination guard
+- LoRA training with assistant-only loss and LoRA targets read from the loaded model
+- evaluation against base Gemma with paired bootstrap tests, plus an auto-generated model card and release gate
+
+**How it was tested:** end to end (data formatting, loss masking, 2 training steps, saving and merging) on a
+**tiny random-weight model with Gemma 4's architecture** (`make_tiny_gemma4.py`), not on the real 8B model.
+
+**What does not exist yet:** a full training run on real hardware, measured results, or released weights.
 See [docs/saara-gemma.md](docs/saara-gemma.md).
 
 ## Documentation
 
 - [Installation](docs/install.md) · [User guide](docs/user-guide.md) · [CLI reference](docs/reference/cli.md)
-- [Export engine](docs/export.md) · [Model runtime guide](docs/reference/models.md) · [saara-gemma training](docs/saara-gemma.md)
+- [Export engine](docs/export.md) · [Model runtime guide](docs/reference/models.md) · [saara-gemma training plan](docs/saara-gemma.md)
 - [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.md)
 
 ## Contributing

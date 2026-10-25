@@ -50,7 +50,7 @@ def test_pdf_ingest_text_extraction(tmp_path: Path):
         tmp_path / "sample.pdf",
         [
             "Page 1: Attention Is All You Need. Transformer architecture overview and results.",
-            "Page 2: Terms and Conditions of Supply and Bank Account details for NEFT transfer.",
+            "Page 2: Related work on recurrent networks and convolutional sequence models.",
         ],
     )
 
@@ -60,7 +60,7 @@ def test_pdf_ingest_text_extraction(tmp_path: Path):
     assert chunks[0].source.page == 1
     assert "Transformer architecture" in chunks[0].content
     assert chunks[1].source.page == 2
-    assert "Terms and Conditions" in chunks[1].content
+    assert "Related work" in chunks[1].content
     assert chunks[0].metadata["extractor"] == "fitz_text"
 
 

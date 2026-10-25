@@ -6,9 +6,8 @@ import random
 import re
 from typing import Any
 
-from rapidfuzz.distance import Levenshtein
-
 from clutter import clutter_left
+from rapidfuzz.distance import Levenshtein
 
 TOOL_CALL_RE = re.compile(r"<\|tool_call>call:([\w.\-]+)(\{.*?\})<tool_call\|>", re.S)
 

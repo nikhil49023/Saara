@@ -11,10 +11,9 @@ import sys
 from pathlib import Path
 
 import pytest
-from PIL import Image
-
 from clutter import add_clutter, clutter_left
 from metrics import parse_tool_calls, score_row, tool_call_scores
+from PIL import Image
 from prompts import CLEAN_USER, OCR_USER, SYSTEM
 
 TINY = os.environ.get("TINY_GEMMA4")
@@ -66,9 +65,8 @@ def test_scores_are_in_range():
 
 @needs_tiny
 def test_labels_cover_only_assistant_tokens(tmp_path):
-    from transformers import AutoProcessor
-
     from train import Collator, load_rows, set_image_budget
+    from transformers import AutoProcessor
 
     rows = _rows(tmp_path)
     (tmp_path / "train.jsonl").write_text("\n".join(json.dumps(r) for r in rows))

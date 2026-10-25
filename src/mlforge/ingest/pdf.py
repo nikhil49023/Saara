@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 VISION_PROMPT = """You are an accurate OCR document parser.
 Transcribe and extract the full content of this document page.
-Preserve all text, structured data, headers, financial figures, tables, and notes.
+Preserve all text in natural reading order, including headings, lists, tables, captions, and notes.
 Format tables as clean Markdown tables.
 Do not add conversational commentary; output only the extracted content.
 """

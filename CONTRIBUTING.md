@@ -48,9 +48,9 @@ ruff check src tests         # lint
 | `src/mlforge/workflows/` | generate, label, distill workflows |
 | `src/mlforge/datasets/` | validation, file formats, export engine and training schemas |
 | `src/mlforge/ingest/` | PDF ingestion (Docling, PyMuPDF, vision OCR fallback) |
-| `src/mlforge/providers/` | model providers (mock, Ollama, vLLM, OpenAI-compatible) |
+| `src/mlforge/providers/` | model providers (mock, Ollama, vLLM, OpenAI-compatible, Gemini) |
 | `src/mlforge/setup/` | doctor, installers, hardware-tiered model setup |
-| `experiments/saara-gemma/` | fine-tuning pipeline for Saara's default model |
+| `experiments/saara-gemma/` | fine-tuning pipeline for a planned Saara model (not trained yet) |
 | `docs/` | user and reference documentation (MkDocs) |
 
 ## Adding an export schema
