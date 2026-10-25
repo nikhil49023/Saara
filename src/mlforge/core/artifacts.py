@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Iterable, Mapping, Any
+from typing import Any
 
 from .hashing import short_hash
 from .schemas import WorkflowRun, utc_now

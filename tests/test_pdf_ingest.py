@@ -4,11 +4,10 @@ import json
 from pathlib import Path
 
 import fitz  # PyMuPDF
-import pytest
 
 from mlforge.cli import main
 from mlforge.ingest.pdf import PDFIngestConfig, PDFIngestor, ingest_pdf
-from mlforge.providers.base import ModelProvider, ModelRequest, ModelResponse
+from mlforge.providers.base import ModelRequest, ModelResponse
 
 
 class DummyVisionProvider:

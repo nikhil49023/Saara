@@ -12,9 +12,10 @@ import gzip
 import hashlib
 import json
 from collections import Counter
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from mlforge.core.schemas import utc_now
 from mlforge.datasets.exporters import export_examples

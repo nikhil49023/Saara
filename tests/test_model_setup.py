@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from mlforge.cli import main
 from mlforge.setup.model import (
-    MODEL_CATALOG,
     HardwareDetector,
     HardwareProfile,
     ModelManager,

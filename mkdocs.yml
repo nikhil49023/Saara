@@ -6,8 +6,10 @@ nav:
   - Installation: install.md
   - User Guide: user-guide.md
   - CLI Reference: reference/cli.md
+  - Export Engine: export.md
   - Model Runtime Guide: reference/models.md
   - Architecture: architecture.md
+  - saara-gemma Training: saara-gemma.md
   - Release Plan: release.md
 theme:
   name: mkdocs

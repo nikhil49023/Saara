@@ -5,9 +5,9 @@ import platform
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from .doctor import DependencyCheck, doctor_checks
 
@@ -242,7 +242,7 @@ def _run_task(
         print(f"Command: {printable}")
         if dry_run:
             continue
-        if not yes and not _confirm(input_func, f"Run this command? [y/N]: "):
+        if not yes and not _confirm(input_func, "Run this command? [y/N]: "):
             return {"target": task.name, "status": "skipped"}
         subprocess.run(command.command, shell=command.shell, check=True)
     return {"target": task.name, "status": "installed" if not dry_run else "dry-run"}

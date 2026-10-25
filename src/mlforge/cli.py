@@ -6,20 +6,20 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from rich.markup import escape
 from rich.table import Table
-from rich.json import JSON
 
 from mlforge import __version__
 from mlforge.core.artifacts import ArtifactStore
 from mlforge.datasets.export_engine import ExportSpec, export_dataset, parse_splits
 from mlforge.datasets.exporters import export_examples
-from mlforge.datasets.schemas import SCHEMAS
 from mlforge.datasets.io import load_rows
+from mlforge.datasets.schemas import SCHEMAS
 from mlforge.datasets.validators import validate_dataset
-from mlforge.ingest.pdf import PDFIngestor, PDFIngestConfig
+from mlforge.ingest.pdf import PDFIngestConfig, PDFIngestor
 from mlforge.providers.factory import create_provider
 from mlforge.setup.doctor import doctor_checks
-from mlforge.setup.installer import run_setup, TASKS
+from mlforge.setup.installer import TASKS, run_setup
 from mlforge.setup.model import MODEL_CATALOG, HardwareDetector, ModelManager
 from mlforge.tools.firecrawl import FirecrawlClient
 from mlforge.ui.animations import spinner, success_pulse
@@ -30,7 +30,6 @@ from mlforge.workflows.config import load_workflow_config
 from mlforge.workflows.distill import DistillWorkflow
 from mlforge.workflows.label_dataset import LabelDatasetWorkflow
 from mlforge.workflows.topic_dataset import DATASET_TYPES, TopicDatasetWorkflow
-
 
 FORMATS = ["json", "jsonl", "csv", "tsv", "parquet", "arrow", "hf"]
 
@@ -76,7 +75,7 @@ def main(argv: list[str] | None = None) -> None:
     except Exception as exc:
         if hasattr(args, "verbose") and args.verbose:
             raise
-        console.print(f"[error]Error:[/] {_friendly_error(exc)}")
+        console.print(f"[error]Error:[/] {escape(_friendly_error(exc))}")
         console.print("[dim]Run with --verbose for the full traceback.[/]")
         sys.exit(1)
 
@@ -375,7 +374,7 @@ def cmd_models_setup(args: argparse.Namespace) -> None:
         console.print(f"[red]Error: Unknown model '{model_name}'. Available catalog models: {', '.join(MODEL_CATALOG.keys())}[/red]")
         return
 
-    console.print(f"\n[bold cyan]Saara Model Setup — Hardware Tiering & Consent Gate[/bold cyan]")
+    console.print("\n[bold cyan]Saara Model Setup — Hardware Tiering & Consent Gate[/bold cyan]")
     console.print(f"• Detected RAM: [bold]{profile.total_ram_gb} GB[/bold] | GPU VRAM: [bold]{profile.vram_gb} GB[/bold] | Free Disk: [bold]{profile.free_disk_gb} GB[/bold]")
     console.print(f"• Selected Model: [bold green]{manifest.name}[/bold green] ({manifest.parameters})")
     console.print(f"• Download Footprint: [bold]{manifest.disk_size_gb} GB[/bold] | Minimum RAM: [bold]{manifest.min_ram_gb} GB[/bold]")

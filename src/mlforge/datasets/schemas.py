@@ -6,7 +6,8 @@ short reason (the export engine counts reasons instead of failing the whole expo
 from __future__ import annotations
 
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class SchemaError(ValueError):

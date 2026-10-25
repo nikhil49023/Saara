@@ -18,7 +18,6 @@ from mlforge.workflows.distill import DistillWorkflow
 from mlforge.workflows.label_dataset import LabelDatasetWorkflow
 from mlforge.workflows.topic_dataset import DATASET_TYPES, TopicDatasetWorkflow
 
-
 PROVIDERS = ["mock", "ollama", "vllm", "openai-compatible"]
 FORMATS = ["jsonl", "json", "csv", "tsv", "parquet", "arrow", "hf"]
 
@@ -128,10 +127,10 @@ def action_model_health() -> None:
 
 
 def action_model_setup() -> None:
-    from mlforge.setup.model import HardwareDetector, MODEL_CATALOG, ModelManager
+    from mlforge.setup.model import MODEL_CATALOG, HardwareDetector, ModelManager
 
     profile = HardwareDetector.detect()
-    print(f"\nHardware Profile:")
+    print("\nHardware Profile:")
     print(f"• System RAM: {profile.total_ram_gb} GB (available: {profile.available_ram_gb} GB)")
     print(f"• GPU VRAM: {profile.vram_gb} GB" if profile.has_gpu else "• GPU: None (CPU inference mode)")
     print(f"• Free Storage: {profile.free_disk_gb} GB")
