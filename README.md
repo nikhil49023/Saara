@@ -1,200 +1,164 @@
 # Saara
 
-Saara is a local-first CLI for ML dataset workflows:
+[![PyPI](https://img.shields.io/pypi/v/saara-ai.svg)](https://pypi.org/project/saara-ai/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Hacktoberfest](https://img.shields.io/badge/Hacktoberfest-2026-orange.svg)](CONTRIBUTING.md)
 
-- topic-to-dataset generation using Firecrawl-local research
-- PDF/document ingestion foundations
-- local model provider routing for Ollama and vLLM-compatible servers
-- canonical dataset examples with provenance
-- labeling and distillation commands
-- validation reports
-- exports to JSON, JSONL, CSV, Parquet, Arrow, and Hugging Face Dataset directories
+**Saara is a local-first CLI for building ML datasets you can trust.** It turns topics, web research and
+PDFs into training data, labels, validates and distills it, and exports it in the formats today's
+fine-tuning tools expect, all on your own machine with local models such as Gemma 4.
 
-The current implementation is an MVP scaffold intended to be extended into the full CLI.
-
-Full planning docs:
-
-- [Architecture](docs/architecture.md)
-- [Installation Guide](docs/install.md)
-- [User Guide](docs/user-guide.md)
-- [CLI Reference](docs/reference/cli.md)
-
-Research artifact:
-
-- [Experiments](experiments/README.md)
-- [Baseline comparison matrix](experiments/baselines/comparison-matrix.md)
-- [Paper outline](experiments/paper/outline.md)
-
-Tutorials & Gemma Cookbook:
-
-- [Fine-Tuning Gemma with Saara Verified Synthetic Data](notebooks/Fine_Tuning_Gemma_With_Saara_Verified_Synthetic_Data.ipynb) (Google Gemma Cookbook recipe for wishlist #158 & #132)
-
-## Quick Start
-
-```bash
-pip install -e .
-saara splash
-saara wizard
-saara init
-
-# 1. Hardware-tiered model setup (pulled only with your explicit consent)
-saara models hardware
-saara models setup
-
-# 2. PDF & Document ingestion (with Docling and Gemma Vision OCR fallback)
-saara ingest pdf path/to/document.pdf --out chunks.jsonl
-
-# 3. Generate dataset from topic or bounded documents
-saara generate topic "robotics motion planning" --samples 20 --provider mock --format jsonl --output-dir runs/robotics
-saara label .mlforge/datasets/robotics-motion-planning.jsonl --labels useful,not-useful --out labeled.jsonl
-saara distill labeled.jsonl --method sft --out distilled.jsonl
-saara validate .mlforge/datasets/robotics-motion-planning.jsonl
+```text
+ research / PDFs ──► ingest ──► generate ──► label ──► validate ──► distill ──► export
+ (Firecrawl-local)  (Docling +   (local LLM)                      (SFT / DPO)  (OpenAI, ShareGPT,
+                     Gemma OCR)                                                 Alpaca, Vertex, ...)
 ```
 
-Running `saara` without arguments shows the splash screen and command help. Use `saara wizard`
-for the interactive guided flow, and direct subcommands for scripts or automation.
-Interactive sessions include terminal animations for the splash screen, menu headers, long-running
-operations, and completion states. Scripted or piped output automatically falls back to plain text.
+## Contents
+- [Install](#install)
+- [Quick start (5 minutes, no GPU)](#quick-start-5-minutes-no-gpu)
+- [Features](#features)
+- [Exporting for training tools](#exporting-for-training-tools)
+- [Local models and privacy](#local-models-and-privacy)
+- [saara-gemma: Saara's own fine-tuned model](#saara-gemma-saaras-own-fine-tuned-model)
+- [Documentation](#documentation)
+- [Contributing (Hacktoberfest welcome)](#contributing)
 
-Use `--provider mock` for deterministic local smoke tests without a running model.
-
-Run a declarative workflow:
-
-```bash
-saara run examples/topic-dataset.json
-```
-
-## Installation
-
-Development install:
+## Install
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .
+pip install saara-ai                 # core CLI
+pip install 'saara-ai[all]'          # + Parquet/Arrow/HF export, PDF ingestion, rich UI
 ```
 
-Install optional dataset exporters:
+From source:
 
 ```bash
-pip install -e '.[data]'
+git clone https://github.com/nikhil49023/Saara.git && cd Saara
+python3 -m venv .venv && . .venv/bin/activate
+pip install -e '.[all,dev]'
+saara --version
 ```
 
-Install all optional local features:
+## Quick start (5 minutes, no GPU)
+
+Every command below runs offline with `--provider mock`, a deterministic development provider.
+Swap in `--provider ollama --model gemma4` (or `vllm` / `openai-compatible`) for real generation.
 
 ```bash
-pip install -e '.[all]'
+saara doctor                                   # check what is installed
+saara generate topic "solar energy" --samples 20 --provider mock --output-dir runs/solar
+saara validate runs/solar/datasets/solar-energy.jsonl
+saara label runs/solar/datasets/solar-energy.jsonl --labels useful,noise --provider mock --output-dir runs/solar
+saara distill runs/solar/datasets/solar-energy.jsonl --method dpo --provider mock --output-dir runs/solar
+saara export runs/solar/datasets/solar-energy.jsonl --to jsonl --schema openai-chat \
+    --split train=0.9,val=0.05,test=0.05 --out exports/solar
 ```
 
-Fresh machine runtime setup:
+Prefer a guided flow? Run `saara wizard`. Running `saara` with no arguments shows the splash screen and help.
+
+## Features
+
+| Stage | Command | What it does |
+|---|---|---|
+| Research | `generate topic --research firecrawl` | Bounded research agent over [Firecrawl-local](https://github.com/mendableai/firecrawl) (`search`, `scrape`); retrieved text is treated as data, not instructions |
+| Ingest | `ingest pdf` | Docling layout parsing; PyMuPDF text; Gemma 4 vision OCR fallback for scanned or handwritten pages |
+| Generate | `generate topic` | `finetuning`, `pretraining`, `reasoning` and `tool-calling` dataset types; configurable prompts |
+| Label | `label` | Constrained label sets with a local model |
+| Validate | `validate` | Schema checks, duplicates, label distribution; machine-readable report |
+| Distill | `distill --method sft\|dpo` | SFT conversations, or DPO pairs with real negatives (another example's answer, or a truncated answer) |
+| Export | `export` | 7 storage formats × 8 training schemas, deterministic splits, sharding, checksums ([details](#exporting-for-training-tools)) |
+| Workflows | `run config.json` | Declarative, repeatable pipelines ([example](examples/topic-dataset.json)) |
+| Models | `models hardware\|setup\|list\|remove` | Hardware-tiered local Gemma setup, downloads only with consent |
+
+Every run records provenance (sources, run IDs, hashes) so a dataset can be traced back to where it came from.
+
+## Exporting for training tools
 
 ```bash
-saara doctor
-saara setup docker --dry-run
-saara setup ollama --dry-run
-saara setup docker ollama
+saara export data.jsonl --to jsonl   --schema sharegpt     --out exports/llamafactory   # + dataset_info.json
+saara export data.jsonl --to jsonl   --schema openai-chat  --split train=0.9,test=0.1 --group-by metadata.source --out exports/openai
+saara export data.jsonl --to parquet --schema chatml       --shard-size 50000 --out exports/chatml
+saara export pairs.jsonl --to jsonl  --schema dpo          --out exports/dpo
+saara export data.jsonl --to jsonl   --schema vertex-gemini --compress gzip --out exports/vertex
 ```
 
-On Debian/Ubuntu, Saara installs Docker Engine from Docker's official apt repository.
-On Linux, Ollama is installed with the official Ollama installer. Review `--dry-run`
-output before running setup commands. Saara does not pull or install models automatically;
-choose a model based on your hardware tier.
+| Schema | Use it with |
+|---|---|
+| `openai-chat` | OpenAI fine-tuning, Together, Fireworks, Azure OpenAI, Unsloth, TRL `SFTTrainer` |
+| `sharegpt` | LLaMA-Factory, Axolotl (tool calls as `function_call` / `observation` turns) |
+| `alpaca` | Instruction tuners expecting `instruction` / `input` / `output` (+ `history`) |
+| `chatml` | Raw-text SFT trainers (`text` field with `<\|im_start\|>` markers) |
+| `vertex-gemini` | Vertex AI / Gemini supervised tuning (`contents`, `parts`, `functionCall`) |
+| `dpo` | TRL `DPOTrainer` and other preference trainers (`prompt` / `chosen` / `rejected`) |
+| `text` | Pretraining / continued pretraining |
+| `saara` | Saara's native rows, unchanged |
 
-After installation, use `saara` directly like a traditional CLI. The old `mlforge` command remains
-available as a compatibility alias during development.
+Storage formats: `jsonl`, `json`, `csv`, `tsv`, `parquet`, `arrow`, `hf` (Hugging Face `save_to_disk`).
 
-For an isolated user-level install, use `pipx` once this project is published or packaged:
+Each engine export (`--schema`, `--split`, `--shard-size` or `--compress`) writes:
+- `<split>/<name>-00000-of-0000N.<ext>`: data shards
+- `export_manifest.json`: counts, dropped rows **with reasons**, sha256 per file, group-leakage check
+- `README.md`: a Hugging Face dataset card
+- `dataset_info.json`: LLaMA-Factory registration (`sharegpt` and `alpaca`)
+
+Splits are deterministic (seeded hashing), and `--group-by` keeps related rows (same document,
+same source) in one split so evaluation data never leaks into training. Rows that a schema cannot
+represent (for example tool calls in `alpaca`) are dropped and counted, or fail with `--strict`.
+Without engine options, `saara export --to FORMAT --out FILE` still writes a single file as before.
+
+## Local models and privacy
+
+Saara **never bundles model weights and never downloads a model without asking**.
 
 ```bash
-pipx install .
+saara models hardware                     # RAM / VRAM / disk and a recommended tier
+saara models setup --dry-run              # show what would be pulled
+saara models setup                        # asks for consent, then pulls via Ollama
+saara models setup --model-path ./model.gguf --model my-gemma   # offline / air-gapped
+saara models remove gemma-4-e4b
 ```
 
-## Model Distribution & Privacy Guarantee
+| Tier | Model | Download | RAM |
+|---|---|---|---|
+| Edge / CPU | `gemma-4-e2b` | ~1.6 GB | 4 GB |
+| Laptop | `gemma-4-e4b` | ~2.9 GB | 8 GB |
+| Workstation / GPU | `gemma-4-12b` | ~7.8 GB | 16 GB |
 
-Saara **never bundles model weights** and **never pulls models automatically**.
-Models are pulled only with your explicit permission:
+Providers: `mock` (offline, deterministic), `ollama` (`http://localhost:11434`), `vllm` and
+`openai-compatible` (default `http://localhost:8000/v1`). Use `--yes` for non-interactive setup in CI.
 
-- Run `saara models hardware` to view detected RAM, GPU VRAM, and storage.
-- Run `saara models setup` to select an **Apache 2.0 Gemma model** (`gemma-4-e2b`, `gemma-4-e4b`, `gemma-4-12b`) tailored to your system tier:
-  - **Tier 1 (Edge / CPU)**: `gemma-4-e2b` (~1.6 GB disk, 4 GB RAM)
-  - **Tier 2 (Laptop / Workstation)**: `gemma-4-e4b` (~2.9 GB disk, 8 GB RAM)
-  - **Tier 3 (GPU Server / Workstation)**: `gemma-4-12b` (~7.8 GB disk, 16 GB RAM)
-- Use `--yes` for non-interactive / CI automation.
-- For air-gapped / offline environments with existing GGUF checkpoints, use:
-  ```bash
-  saara models setup --model-path /path/to/model.gguf --model my-local-gemma
-  ```
-- To reclaim storage, remove any local model with:
-  ```bash
-  saara models remove gemma-4-e2b
-  ```
+## saara-gemma: Saara's own fine-tuned model
 
-## Document Ingestion (Docling + Gemma 4 Vision)
+`experiments/saara-gemma/` contains a production-style pipeline to fine-tune **Gemma 4 E4B** for
+Saara's core skills: document OCR (including historical and degraded scans), cleaning noisy text,
+and multi-step tool workflows. It uses **public datasets only**: olmOCR-mix, Post-OCR-Correction,
+fineweb-edu, Toucan-1.5M, When2Call, Tulu-3.
 
-Ingest complex PDFs, research papers, and financial invoices into structured chunks:
+The pipeline covers group-aware leak-free splits, a contamination guard, assistant-only loss, LoRA
+targets chosen from the loaded architecture, early stopping on a task metric, paired-bootstrap
+evaluation against base Gemma, and an auto-generated model card. It becomes Saara's default model only
+if it beats base Gemma on every skill. **Status: pipeline built and tested; the training run is scheduled.**
+See [docs/saara-gemma.md](docs/saara-gemma.md).
+
+## Documentation
+
+- [Installation](docs/install.md) · [User guide](docs/user-guide.md) · [CLI reference](docs/reference/cli.md)
+- [Export engine](docs/export.md) · [Model runtime guide](docs/reference/models.md) · [saara-gemma training](docs/saara-gemma.md)
+- [Architecture](docs/architecture.md) · [Changelog](CHANGELOG.md)
+
+## Contributing
+
+Contributions are welcome, including for **Hacktoberfest**. Start with [CONTRIBUTING.md](CONTRIBUTING.md),
+then pick an issue labelled `good first issue` or `hacktoberfest`. Please follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ```bash
-# Ingest single PDF with Docling layout parsing & Gemma Vision OCR fallback
-saara ingest pdf invoice.pdf --out invoice_chunks.jsonl
-
-# Ingest an entire directory of PDFs
-saara ingest pdf ./documents/ --output-dir ./runs/ingested
+pip install -e '.[all,dev]'
+python -m pytest -q
 ```
 
-- High-density text pages use fast semantic parsing.
-- Scanned, sparse, or handwritten pages automatically trigger Gemma 4 Vision OCR.
-- Disable vision fallback with `--no-vision` for pure digital PDFs.
+## License
 
-## Firecrawl Local
-
-Topic generation can use Firecrawl-local at `http://localhost:3002`:
-
-```bash
-saara generate topic "dataset distillation" \
-  --provider ollama \
-  --model qwen \
-  --research firecrawl \
-  --samples 100
-```
-
-The Firecrawl integration is exposed as a typed agent tool named `firecrawl_local`.
-The topic workflow uses a bounded `ResearchAgent` that calls:
-
-- `firecrawl_local.search(query, limit)`
-- `firecrawl_local.scrape(url)`
-
-LangChain is not required for the core workflow. Saara uses its own small typed tool interface
-so Firecrawl-local calls are deterministic, auditable, and easy to test. A small adapter is
-included for projects that want LangChain-compatible tools via the optional `saara-ai[agents]`
-extra.
-
-## Configurable Dataset Modes
-
-Generation can target multiple training dataset shapes:
-
-- `finetuning`: chat/SFT-style message examples
-- `pretraining`: plain text examples in `output.text`
-- `reasoning`: examples with a `reasoning` field
-- `tool-calling`: examples with `tools` and `tool_calls`
-
-Most runtime and prompting behavior is user-configurable from CLI flags or workflow JSON:
-provider base URLs, model names, API keys, Firecrawl URL, system prompt, prompt template,
-temperature, max tokens, output format, and output directory. When `--output-dir` is used,
-Saara writes datasets, reports, and run artifacts into that directory.
-
-## Runtime Providers
-
-- `mock`: deterministic development provider
-- `ollama`: `http://localhost:11434`
-- `vllm`: OpenAI-compatible endpoint, default `http://localhost:8000/v1`
-
-## Dataset Formats
-
-Supported exports:
-
-- `json`
-- `jsonl`
-- `csv`
-- `parquet` with optional `pyarrow`
-- `arrow` with optional `pyarrow`
-- `hf` with optional `datasets`
+MIT, see [LICENSE](LICENSE). Gemma models are released by Google under Apache 2.0; datasets keep their own licenses.

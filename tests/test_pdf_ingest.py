@@ -50,7 +50,7 @@ def test_pdf_ingest_text_extraction(tmp_path: Path):
     pdf_path = _create_sample_pdf(
         tmp_path / "sample.pdf",
         [
-            "Page 1: GST Invoice INV-2026-001 for Indian MSME Services. Total: INR 45,000.",
+            "Page 1: Attention Is All You Need. Transformer architecture overview and results.",
             "Page 2: Terms and Conditions of Supply and Bank Account details for NEFT transfer.",
         ],
     )
@@ -59,16 +59,16 @@ def test_pdf_ingest_text_extraction(tmp_path: Path):
 
     assert len(chunks) == 2
     assert chunks[0].source.page == 1
-    assert "GST Invoice" in chunks[0].content
+    assert "Transformer architecture" in chunks[0].content
     assert chunks[1].source.page == 2
     assert "Terms and Conditions" in chunks[1].content
     assert chunks[0].metadata["extractor"] == "fitz_text"
 
 
 def test_pdf_ingest_vision_fallback_on_sparse_page(tmp_path: Path):
-    # Page 1 is text, Page 2 is empty/sparse (simulating a scanned invoice image)
+    # Page 1 is text, Page 2 is empty/sparse (simulating a scanned page image)
     pdf_path = _create_sample_pdf(
-        tmp_path / "scanned_invoice.pdf",
+        tmp_path / "scanned_page.pdf",
         [
             "Page 1 has plenty of direct digital text content exceeding the minimum character threshold.",
             "",  # empty/scanned page
@@ -76,7 +76,7 @@ def test_pdf_ingest_vision_fallback_on_sparse_page(tmp_path: Path):
     )
 
     vision_provider = DummyVisionProvider(
-        transcript="| Invoice # | Amount |\n| --- | --- |\n| GST-99 | 15000 |"
+        transcript="| Model | BLEU |\n| --- | --- |\n| Transformer-Big | 28.4 |"
     )
     ingestor = PDFIngestor(
         provider=vision_provider,
@@ -90,7 +90,7 @@ def test_pdf_ingest_vision_fallback_on_sparse_page(tmp_path: Path):
     assert chunks[0].metadata["extractor"] == "fitz_text"
     # Page 2 extracted via vision fallback
     assert chunks[1].metadata["extractor"] == "gemma_vision"
-    assert "GST-99" in chunks[1].content
+    assert "Transformer-Big" in chunks[1].content
     assert len(vision_provider.calls) == 1
     assert "images" in vision_provider.calls[0].metadata
 
