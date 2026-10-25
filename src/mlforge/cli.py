@@ -10,7 +10,9 @@ from rich.table import Table
 from rich.json import JSON
 
 from mlforge.core.artifacts import ArtifactStore
+from mlforge.datasets.export_engine import ExportSpec, export_dataset, parse_splits
 from mlforge.datasets.exporters import export_examples
+from mlforge.datasets.schemas import SCHEMAS
 from mlforge.datasets.io import load_rows
 from mlforge.datasets.validators import validate_dataset
 from mlforge.providers.factory import create_provider
@@ -157,10 +159,19 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--output-dir", default=None)
     validate.set_defaults(func=cmd_validate)
 
-    export = sub.add_parser("export", help="Convert a dataset to another format")
+    export = sub.add_parser("export", help="Convert a dataset to another format and training schema")
     export.add_argument("input")
-    export.add_argument("--to", required=True, choices=FORMATS)
-    export.add_argument("--out", default=None)
+    export.add_argument("--to", required=True, choices=FORMATS, help="Storage format")
+    export.add_argument("--schema", default=None, choices=sorted(SCHEMAS),
+                        help="Training schema (openai-chat, sharegpt, alpaca, chatml, vertex-gemini, dpo, text, saara)")
+    export.add_argument("--split", default=None, help="Deterministic splits, e.g. train=0.9,val=0.05,test=0.05")
+    export.add_argument("--group-by", default=None, help="Field (dot path) that keeps related rows in one split")
+    export.add_argument("--shard-size", type=int, default=None, help="Max rows per output file")
+    export.add_argument("--compress", default=None, choices=["gzip"])
+    export.add_argument("--name", default=None, help="Dataset name used for shard files and the dataset card")
+    export.add_argument("--seed", type=int, default=0)
+    export.add_argument("--strict", action="store_true", help="Fail instead of dropping rows the schema cannot hold")
+    export.add_argument("--out", default=None, help="Output file, or output directory when using engine options")
     export.add_argument("--output-dir", default=None)
     export.set_defaults(func=cmd_export)
 
@@ -342,6 +353,9 @@ def cmd_distill(args: argparse.Namespace) -> None:
 
 
 def cmd_export(args: argparse.Namespace) -> None:
+    if any([args.schema, args.split, args.shard_size, args.compress]):
+        _cmd_export_engine(args)
+        return
     output_path = _resolve_output_path(
         explicit=args.out,
         output_dir=Path(args.output_dir) if args.output_dir else None,
@@ -356,6 +370,24 @@ def cmd_export(args: argparse.Namespace) -> None:
         output = export_examples(rows, output_path, args.to)
     success_pulse("Export complete")
     console.print_json(data={"input": args.input, "output": str(output), "format": args.to, "rows": len(rows)})
+
+
+def _cmd_export_engine(args: argparse.Namespace) -> None:
+    name = args.name or _slug(Path(args.input).stem)
+    out_dir = Path(args.out) if args.out else (Path(args.output_dir) / "exports" / name if args.output_dir else None)
+    if out_dir is None:
+        raise ValueError("export requires --out or --output-dir")
+    spec = ExportSpec(
+        fmt=args.to, schema=args.schema or "saara",
+        splits=parse_splits(args.split) if args.split else {"train": 1.0},
+        group_by=args.group_by, shard_size=args.shard_size, compress=args.compress,
+        name=name, seed=args.seed, strict=args.strict,
+    )
+    with spinner(f"Exporting {spec.schema} as {spec.fmt}"):
+        manifest = export_dataset(load_rows(args.input), out_dir, spec)
+    success_pulse("Export complete")
+    console.print_json(data={k: manifest[k] for k in ("schema", "format", "rows_in", "rows_out", "counts", "dropped",
+                                                     "group_leakage")} | {"out_dir": str(out_dir)})
 
 
 def cmd_run(args: argparse.Namespace) -> None:
