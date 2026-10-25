@@ -73,6 +73,17 @@ TASKS = {
         ),
         command_factory=_empty_commands,
     ),
+    "model": SetupTask(
+        name="model",
+        title="Local model setup (with explicit consent & hardware tiering)",
+        check_name="model",
+        install_url="https://ai.google.dev/gemma",
+        note=(
+            "Configures local Gemma models with hardware tiering check. "
+            "Requires explicit consent before downloading any weights."
+        ),
+        command_factory=lambda: [SetupCommand(["saara", "models", "setup"], "Run interactive hardware-tiered model setup")],
+    ),
     "data": SetupTask(
         name="data",
         title="Data export extras",
