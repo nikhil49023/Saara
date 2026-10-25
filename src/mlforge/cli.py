@@ -9,6 +9,7 @@ from typing import Any
 from rich.table import Table
 from rich.json import JSON
 
+from mlforge import __version__
 from mlforge.core.artifacts import ArtifactStore
 from mlforge.datasets.export_engine import ExportSpec, export_dataset, parse_splits
 from mlforge.datasets.exporters import export_examples
@@ -33,6 +34,29 @@ from mlforge.workflows.topic_dataset import DATASET_TYPES, TopicDatasetWorkflow
 
 FORMATS = ["json", "jsonl", "csv", "tsv", "parquet", "arrow", "hf"]
 
+QUICKSTART = """quick start:
+  saara doctor                                    check runtime requirements
+  saara models setup --dry-run                    pick a local Gemma model for this machine
+  saara generate topic "solar energy" --samples 20 --provider mock --output-dir runs/solar
+  saara validate runs/solar/datasets/solar-energy.jsonl
+  saara ingest pdf ./papers --output-dir runs/papers --no-vision
+  saara export runs/solar/datasets/solar-energy.jsonl --to jsonl --schema openai-chat \\
+      --split train=0.9,val=0.05,test=0.05 --out exports/solar
+
+docs: https://github.com/nikhil49023/Saara#readme
+"""
+
+EXPORT_EXAMPLES = """examples:
+  saara export data.jsonl --to parquet --out data.parquet
+  saara export data.jsonl --to jsonl --schema sharegpt --out exports/llamafactory
+  saara export data.jsonl --to jsonl --schema openai-chat --split train=0.9,test=0.1 --group-by metadata.source --out exports/openai
+  saara export pairs.jsonl --to parquet --schema dpo --shard-size 50000 --out exports/dpo
+  saara export data.jsonl --to jsonl --schema vertex-gemini --compress gzip --out exports/vertex
+
+schemas: openai-chat (OpenAI/Together/Unsloth/TRL), sharegpt (LLaMA-Factory/Axolotl), alpaca, chatml,
+         vertex-gemini (Vertex AI tuning), dpo (TRL preference pairs), text (pretraining), saara (native)
+"""
+
 
 def main(argv: list[str] | None = None) -> None:
     if argv is None:
@@ -46,11 +70,23 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     try:
         args.func(args)
+    except KeyboardInterrupt:
+        console.print("\n[dim]Interrupted.[/]")
+        sys.exit(130)
     except Exception as exc:
         if hasattr(args, "verbose") and args.verbose:
             raise
-        console.print(f"[error]Error:[/] {exc}")
+        console.print(f"[error]Error:[/] {_friendly_error(exc)}")
+        console.print("[dim]Run with --verbose for the full traceback.[/]")
         sys.exit(1)
+
+
+def _friendly_error(exc: Exception) -> str:
+    if isinstance(exc, FileNotFoundError):
+        return f"file not found: {exc.filename or exc}"
+    if isinstance(exc, ModuleNotFoundError):
+        return f"missing optional dependency '{exc.name}'. Try: pip install 'saara-ai[all]'"
+    return str(exc)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -60,7 +96,10 @@ def build_parser() -> argparse.ArgumentParser:
             "Saara is a local-first CLI for dataset generation, labeling, validation, "
             "research, and distillation workflows."
         ),
+        epilog=QUICKSTART,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=f"saara {__version__}")
     parser.add_argument("--verbose", action="store_true", help="Show full stack traces on error")
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -178,8 +217,9 @@ def build_parser() -> argparse.ArgumentParser:
     validate.add_argument("--output-dir", default=None)
     validate.set_defaults(func=cmd_validate)
 
-    export = sub.add_parser("export", help="Convert a dataset to another format and training schema")
-    export.add_argument("input")
+    export = sub.add_parser("export", help="Convert a dataset to another format and training schema",
+                            epilog=EXPORT_EXAMPLES, formatter_class=argparse.RawDescriptionHelpFormatter)
+    export.add_argument("input", help="Dataset file (.jsonl, .json, .csv, .tsv)")
     export.add_argument("--to", required=True, choices=FORMATS, help="Storage format")
     export.add_argument("--schema", default=None, choices=sorted(SCHEMAS),
                         help="Training schema (openai-chat, sharegpt, alpaca, chatml, vertex-gemini, dpo, text, saara)")

@@ -133,3 +133,30 @@ def test_cli_export_engine(tmp_path: Path) -> None:
     assert "Export complete" in result.stdout
     manifest = json.loads((out / "export_manifest.json").read_text())
     assert manifest["schema"] == "openai-chat" and manifest["rows_out"] == 2
+
+
+def test_parquet_and_hf_handle_empty_nested_fields(tmp_path: Path) -> None:
+    pytest.importorskip("pyarrow")
+    from mlforge.datasets.exporters import export_examples
+
+    rows = [{"id": "a", "labels": {}, "metadata": {}, "tools": []}, {"id": "b", "labels": {"x": 1}, "metadata": {}, "tools": []}]
+    assert export_examples(rows, tmp_path / "x.parquet", "parquet").exists()
+
+
+def test_dpo_rejected_is_a_real_negative(tmp_path: Path) -> None:
+    from mlforge.workflows.distill import _rejected_for
+
+    rows = [{"messages": [{"role": "user", "content": f"q{i}"}, {"role": "assistant", "content": f"answer {i}"}]} for i in range(3)]
+    rejected, strategy = _rejected_for("answer 0", 1, rows)
+    assert (rejected, strategy) == ("answer 1", "mismatched_answer")
+    single = [rows[0]]
+    rejected, strategy = _rejected_for("First point. Second point. Third point.", 1, single)
+    assert strategy == "truncated_answer" and rejected != "First point. Second point. Third point."
+
+
+def test_cli_version_and_friendly_missing_file() -> None:
+    version = subprocess.run([sys.executable, "-m", "mlforge", "--version"], text=True, capture_output=True, cwd=ROOT)
+    assert version.stdout.startswith("saara ")
+    missing = subprocess.run([sys.executable, "-m", "mlforge", "export", "nope.jsonl", "--to", "jsonl", "--out", "x.jsonl"],
+                             text=True, capture_output=True, cwd=ROOT)
+    assert missing.returncode == 1 and "file not found: nope.jsonl" in missing.stdout

@@ -21,7 +21,7 @@ class DistillWorkflow:
         if self.method == "sft":
             distilled = [self._to_sft(row, index) for index, row in enumerate(rows, start=1)]
         elif self.method == "dpo":
-            distilled = [self._to_dpo(row, index) for index, row in enumerate(rows, start=1)]
+            distilled = [self._to_dpo(row, index, rows) for index, row in enumerate(rows, start=1)]
         else:
             raise ValueError(f"Unsupported distillation method: {self.method}")
         export_examples(distilled, self.output_path, self.output_format)
@@ -48,11 +48,11 @@ class DistillWorkflow:
             },
         }
 
-    def _to_dpo(self, row: dict[str, Any], index: int) -> dict[str, Any]:
+    def _to_dpo(self, row: dict[str, Any], index: int, rows: list[dict[str, Any]]) -> dict[str, Any]:
         messages = _messages(row)
         prompt = _first_user(messages)
         chosen = _last_assistant(messages)
-        rejected = "I do not have enough grounded information to answer this well."
+        rejected, strategy = _rejected_for(chosen, index, rows)
         return {
             "id": row.get("id") or f"dpo_{index:06d}",
             "task_type": "preference_dpo",
@@ -63,10 +63,10 @@ class DistillWorkflow:
             "metadata": {
                 **_metadata(row),
                 "distillation_method": "dpo",
+                "rejected_strategy": strategy,
                 "teacher_provider": getattr(self.provider, "name", "unknown"),
             },
         }
-
 
 def _messages(row: dict[str, Any]) -> list[dict[str, Any]]:
     messages = row.get("messages")
@@ -103,3 +103,19 @@ def _last_assistant(messages: list[dict[str, Any]]) -> str:
 def _metadata(row: dict[str, Any]) -> dict[str, Any]:
     metadata = row.get("metadata")
     return metadata if isinstance(metadata, dict) else {}
+
+
+def _rejected_for(chosen: str, index: int, rows: list[dict[str, Any]]) -> tuple[str, str]:
+    """Contrastive negative without an extra model call.
+
+    Prefer another example's answer (fluent but wrong for this prompt); fall back to a truncated
+    answer (incomplete). A constant refusal string would teach the model to never admit uncertainty.
+    """
+    count = len(rows)
+    for offset in range(1, count):
+        other = _last_assistant(_messages(rows[(index - 1 + offset) % count]))
+        if other and other.strip() != chosen.strip():
+            return other, "mismatched_answer"
+    sentences = [part for part in chosen.replace("\n", " ").split(". ") if part]
+    truncated = ". ".join(sentences[: max(1, len(sentences) // 2)]) if len(sentences) > 1 else chosen[: max(1, len(chosen) // 2)]
+    return truncated, "truncated_answer"

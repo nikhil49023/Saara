@@ -58,7 +58,7 @@ def _export_arrow_like(rows: list[dict[str, Any]], output_path: Path, fmt: str) 
         import pyarrow.parquet as pq
     except ImportError as exc:
         raise RuntimeError("Install optional data dependencies: pip install 'saara-ai[data]'") from exc
-    table = pa.Table.from_pylist(rows)
+    table = _arrow_table(pa, rows)
     if fmt == "parquet":
         pq.write_table(table, output_path)
     else:
@@ -73,6 +73,26 @@ def _export_hf(rows: list[dict[str, Any]], output_path: Path) -> Path:
         from datasets import Dataset
     except ImportError as exc:
         raise RuntimeError("Install optional data dependencies: pip install 'saara-ai[data]'") from exc
-    dataset = Dataset.from_list(rows)
+    try:
+        dataset = Dataset.from_list([_drop_empty(row) for row in rows])
+    except (TypeError, ValueError):
+        dataset = Dataset.from_list([_flatten(row) for row in rows])
     dataset.save_to_disk(str(output_path))
     return output_path
+
+
+def _drop_empty(value: Any) -> Any:
+    """Empty dicts become None: Arrow cannot store a struct with no fields."""
+    if isinstance(value, Mapping):
+        return {k: _drop_empty(v) for k, v in value.items()} if value else None
+    if isinstance(value, list):
+        return [_drop_empty(v) for v in value]
+    return value
+
+
+def _arrow_table(pa: Any, rows: list[dict[str, Any]]) -> Any:
+    try:
+        return pa.Table.from_pylist([_drop_empty(row) for row in rows])
+    except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
+        # Heterogeneous nested values (e.g. tool schemas): keep top-level columns, JSON-encode nested ones.
+        return pa.Table.from_pylist([_flatten(row) for row in rows])
