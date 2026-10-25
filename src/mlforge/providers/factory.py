@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .gemini import DEFAULT_MODEL as GEMINI_DEFAULT_MODEL
+from .gemini import GeminiProvider
 from .mock import MockProvider
 from .ollama import OllamaProvider
 from .openai_compatible import OpenAICompatibleProvider
@@ -22,4 +24,6 @@ def create_provider(
             base_url=base_url or "http://localhost:8000/v1",
             api_key=api_key or "EMPTY",
         )
+    if provider == "gemini":
+        return GeminiProvider(model=model or GEMINI_DEFAULT_MODEL, api_key=api_key)
     raise ValueError(f"Unsupported provider: {provider}")

@@ -356,9 +356,11 @@ def build_hermes(caps: dict) -> list[dict]:
         if len(rows) >= caps["hermes"]:
             break
         conv = record["conversations"]
-        found = re.search(r"<tools>\s*(.*?)\s*</tools>", conv[0]["value"], re.S) if conv and conv[0]["from"] == "system" else None
+        # The system prompt mentions "<tools> </tools>" in prose before the real block: use the last non-empty match.
+        blocks = re.findall(r"<tools>\s*(.*?)\s*</tools>", conv[0]["value"], re.S) if conv and conv[0]["from"] == "system" else []
+        blocks = [b for b in blocks if b.strip()]
         try:
-            tools = json.loads(found.group(1)) if found else []
+            tools = json.loads(blocks[-1]) if blocks else []
         except json.JSONDecodeError:
             tools = []
         messages, pending, counter, ok = [], [], 0, bool(tools)

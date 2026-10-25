@@ -254,7 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def add_provider_args(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("Model Provider Settings")
-    group.add_argument("--provider", default="mock", choices=["mock", "ollama", "vllm", "openai-compatible"])
+    group.add_argument("--provider", default="mock", choices=["mock", "ollama", "vllm", "openai-compatible", "gemini"])
     group.add_argument("--model", default=None)
     group.add_argument("--base-url", default=None)
     group.add_argument("--api-key", default=None)
