@@ -79,7 +79,7 @@ def test_labels_cover_only_assistant_tokens(tmp_path):
         batch = collator([row])
         labels = batch["labels"][0]
         learned = tok.decode([t for t in labels.tolist() if t != -100])
-        prompt_side = tok.decode([t for t, l in zip(batch["input_ids"][0].tolist(), labels.tolist()) if l == -100])
+        prompt_side = tok.decode([t for t, lab in zip(batch["input_ids"][0].tolist(), labels.tolist()) if lab == -100])
         print(row["id"], "LEARNED:", repr(learned))
         assert "TOOL_RESULT_SECRET" not in learned
         assert SYSTEM[row["skill"]][:30] not in learned and SYSTEM[row["skill"]][:30] in prompt_side
