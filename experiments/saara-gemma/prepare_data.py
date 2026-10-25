@@ -137,7 +137,9 @@ def build_ocr(out: Path, plan: dict, noisy_share: float) -> list[dict]:
                             continue
                         try:
                             with fitz.open(stream=archive.extractfile(info).read(), filetype="pdf") as doc:
-                                pix = doc[int(record["page_number"]) - 1].get_pixmap(dpi=RENDER_DPI)
+                                # olmOCR tarballs hold single-page extracts; page_number refers to the source document.
+                                page_index = 0 if len(doc) == 1 else int(record["page_number"]) - 1
+                                pix = doc[page_index].get_pixmap(dpi=RENDER_DPI)
                                 image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
                         except Exception:  # corrupt PDFs are dropped, not fatal
                             drops["ocr_render_failed"] += 1
