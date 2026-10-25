@@ -1,0 +1,7 @@
+data/
+data_*/
+runs/
+results/
+release/
+logs/
+__pycache__/
