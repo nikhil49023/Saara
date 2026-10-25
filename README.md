@@ -25,6 +25,10 @@ Research artifact:
 - [Baseline comparison matrix](experiments/baselines/comparison-matrix.md)
 - [Paper outline](experiments/paper/outline.md)
 
+Tutorials & Gemma Cookbook:
+
+- [Fine-Tuning Gemma with Saara Verified Synthetic Data](notebooks/Fine_Tuning_Gemma_With_Saara_Verified_Synthetic_Data.ipynb) (Google Gemma Cookbook recipe for wishlist #158 & #132)
+
 ## Quick Start
 
 ```bash
