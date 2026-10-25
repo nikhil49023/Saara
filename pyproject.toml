@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "saara-ai"
-version = "1.7.0"
+version = "1.8.0"
 description = "Saara: local-first CLI for dataset generation, labeling, validation, and distillation workflows."
 readme = "README.md"
 requires-python = ">=3.11"

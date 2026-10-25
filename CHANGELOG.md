@@ -5,7 +5,9 @@ All notable changes to Saara are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.7.0] - 2026-10-25 (Hacktoberfest 2026)
+## [1.8.0] - 2026-10-25 (Hacktoberfest 2026)
+
+Version 1.7.0 was already used by the earlier SAARA Desktop GitHub release, so this release is 1.8.0.
 
 ### Added
 - **Export engine**: `saara export --schema` converts datasets to `openai-chat`, `sharegpt`, `alpaca`, `chatml`,

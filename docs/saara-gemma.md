@@ -4,7 +4,7 @@
 default local model. This page documents the full process. Numbers for a specific release are generated
 automatically by `report.py` into `MODEL_CARD.md` and `TRAINING_REPORT.md`; nothing is typed in by hand.
 
-> **Status (v1.7.0):** the pipeline is built and tested end to end on a reduced-size Gemma 4 with the same
+> **Status (v1.8.0):** the pipeline is built and tested end to end on a reduced-size Gemma 4 with the same
 > architecture. The first full training run is scheduled; no saara-gemma weights have been released yet.
 > Until a release passes the gate below, Saara keeps using base Gemma 4 models.
 
