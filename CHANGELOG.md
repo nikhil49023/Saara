@@ -18,12 +18,16 @@ All notable changes to Saara are documented here. The format follows
 - **Local model setup**: `saara models hardware|setup|list|remove` with hardware tiering (Gemma 4 E2B / E4B / 12B),
   an explicit consent gate before any download, SHA-256 verification and offline `--model-path` registration.
 - Wizard step for local model setup.
+- `--provider gemini`: hosted Gemma 4 / Gemini through the official `google-genai` SDK, with image parts for
+  vision OCR and Gemma 4 thinking level (`pip install 'saara-ai[gemini]'`).
 - `saara --version`, a quick-start section in `saara --help`, and examples in `saara export --help`.
 - **saara-gemma** fine-tuning pipeline (`experiments/saara-gemma/`) for Gemma 4 E4B on public datasets, with
   evaluation and auto-generated release docs. See `docs/saara-gemma.md`.
 - Contributor docs: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issue and PR templates, CI workflow.
 
 ### Fixed
+- saara-gemma: the Hermes function-calling parser dropped every row (the prompt mentions `<tools> </tools>` in prose
+  before the real block); Hermes data is now included.
 - `pip install saara-ai` (no extras) crashed at startup: `rich` is now a core dependency.
 - Parquet, Arrow and HF exports crashed on rows with empty nested fields (for example `labels: {}`).
 - `distill --method dpo` used a constant refusal string as every `rejected` answer, which teaches a model to

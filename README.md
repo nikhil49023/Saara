@@ -127,7 +127,8 @@ saara models remove gemma-4-e4b
 | Workstation / GPU | `gemma-4-12b` | ~7.8 GB | 16 GB |
 
 Providers: `mock` (offline, deterministic), `ollama` (`http://localhost:11434`), `vllm` and
-`openai-compatible` (default `http://localhost:8000/v1`). Use `--yes` for non-interactive setup in CI.
+`openai-compatible` (default `http://localhost:8000/v1`), and `gemini` for hosted Gemma 4 through the Gemini API
+(`pip install 'saara-ai[gemini]'`, set `GEMINI_API_KEY`; default model `gemma-4-26b-a4b-it`, supports page images for OCR). Use `--yes` for non-interactive setup in CI.
 
 ## saara-gemma: Saara's own fine-tuned model
 

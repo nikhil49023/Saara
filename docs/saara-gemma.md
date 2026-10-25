@@ -23,10 +23,10 @@ No synthetic data from other LLMs is used. Every dataset revision is pinned in `
 | Cleaning | `PleIAs/Post-OCR-Correction` (English) | CC0 | Real OCR noise → corrected text |
 | Cleaning | `HuggingFaceFW/fineweb-edu` + programmatic clutter | ODC-BY | Navigation, links, banners, HTML and whitespace added by seeded code; target is the original text |
 | Workflows | `Agent-Ark/Toucan-1.5M` (SFT) | Apache-2.0 | Real multi-step MCP tool trajectories |
+| Workflows | `NousResearch/hermes-function-calling-v1` | Apache-2.0 | Function calling with tool responses |
 | Workflows | `nvidia/When2Call` | CC-BY-4.0 | Asking for missing information, declining when no tool fits |
 | Replay | `allenai/tulu-3-sft-mixture` | ODC-BY | ~5% general data so general ability is not lost |
 
-`NousResearch/hermes-function-calling-v1` is wired in but excluded from v0.1 while its parser is fixed.
 
 ### Train/inference parity
 - Pages are rendered with **PyMuPDF at 150 DPI, the same renderer and setting as `saara ingest pdf`**. Oversized
@@ -80,7 +80,7 @@ verdict into the model card.
 cd experiments/saara-gemma
 pip install -r requirements.txt
 bash run.sh prefetch                       # parallel downloads into the HF cache
-python prepare_data.py --out data --skip hermes
+python prepare_data.py --out data
 bash run.sh test                           # pipeline tests (tiny Gemma 4 tests need TINY_GEMMA4)
 bash run.sh pilot                          # 5% of data: throughput, memory, loss sanity
 bash run.sh train

@@ -177,7 +177,7 @@ saara models health --provider vllm --model google/gemma-4-E4B-it --base-url htt
 ```
 
 `models setup` never downloads without consent; pass `--yes` for non-interactive use.
-Supported providers: `mock`, `ollama`, `vllm`, `openai-compatible`.
+Supported providers: `mock`, `ollama`, `vllm`, `openai-compatible`, `gemini` (hosted Gemma 4; needs `saara-ai[gemini]` and `GEMINI_API_KEY`).
 
 ## Run
 
